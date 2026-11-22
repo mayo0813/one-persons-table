@@ -138,6 +138,12 @@ const CG_OVERLAY = {
     const nm = G.name || '……';
     c.font = `bold ${nm.length > 4 ? 16 : 20}px ${FONT}`; c.fillText(nm, 0, 13);
   },
+  cg_day4_special_meal(c) { // 접시에 꽂힌 작은 이름표: 플레이어 이름만
+    c.translate(452, 346); c.rotate(0.1);
+    c.fillStyle = 'rgba(60,30,40,0.9)'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    const nm = G.name || '……';
+    c.font = `bold ${nm.length > 4 ? 11 : 13}px ${FONT}`; c.fillText(nm, 0, 0);
+  },
 };
 function drawCgOverlay(name, x = 0, y = 0, w = SW, h = SH) {
   const f = CG_OVERLAY[name]; if (!f) return;
