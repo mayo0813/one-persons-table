@@ -138,7 +138,7 @@ const MAPS = {
     rows: [
       'TTTTTTTTTTTTTTTTT',
       'TNWWBBBBBWWCWWNDT',
-      'THH..........p..T',
+      'THH.............T',
       'T.......P.......T',
       'T...............T',
       'T.d.d.d.d.d.d..HT',
@@ -167,6 +167,7 @@ const MAPS = {
     },
     events: [
       { id: 'door', x: 15, y: 1, touch: () => transfer('hall2', 4, 2, 'down') },
+      { id: 'plant', x: 13, y: 2, block: true, deco: drawRaisedPlant, text: ['조화다. 잎에 먼지 하나 없다.'] },
       { id: 'teacher', x: 15, y: 2, sprite: 'teacher', dir: 'left', show: () => dflag('teacherIn') },
       { id: 'yuri', x: 12, y: 10, sprite: 'yuri', dir: 'up', show: () => G.day < 7 && (G.phase === 0 || (G.phase === 2 && !dflag('yuriLeft4') && !dflag('yuriLeft5')) || (G.phase >= 3 && G.day <= 2)), action: async (e) => { await yuriClassroom(e); } },
       { id: 'yuriDoor', x: 15, y: 2, sprite: 'yuri', dir: 'down', show: () => dflag('yuriDoor') },
@@ -1738,6 +1739,28 @@ function drawLever(c, sx, sy, down) {
   c.strokeStyle = '#8a8090'; c.lineWidth = 3; c.beginPath(); c.moveTo(sx + 24, sy + 30);
   c.lineTo(sx + 24 + (down ? 9 : -9), sy + (down ? 42 : 14)); c.stroke();
   c.fillStyle = '#b0242e'; c.beginPath(); c.arc(sx + 24 + (down ? 9 : -9), sy + (down ? 42 : 14), 4, 0, 7); c.fill();
+}
+/* 교실 화분 — 담임이 지나가는 줄이라 벽 쪽으로 반 칸 올려 그린다 (타일에서 바닥을 빼고 화분만 오려 냄) */
+const _plantCut = {};
+function drawRaisedPlant(c, sx, sy) {
+  const key = stageSheet(TC), im = IMG[key];
+  if (!im) return;
+  if (!_plantCut[key]) {
+    const pi = stageIdx(TC, 20, 13, 2), fi = stageIdx(TC, 0, 13, 2);
+    const cv = document.createElement('canvas'); cv.width = cv.height = TILE;
+    const g = cv.getContext('2d');
+    g.drawImage(im, (fi % 8) * TILE, Math.floor(fi / 8) * TILE, TILE, TILE, 0, 0, TILE, TILE);
+    const floor = g.getImageData(0, 0, TILE, TILE).data;
+    g.clearRect(0, 0, TILE, TILE);
+    g.drawImage(im, (pi % 8) * TILE, Math.floor(pi / 8) * TILE, TILE, TILE, 0, 0, TILE, TILE);
+    const d = g.getImageData(0, 0, TILE, TILE);
+    for (let i = 0; i < d.data.length; i += 4) {
+      const diff = Math.abs(d.data[i] - floor[i]) + Math.abs(d.data[i + 1] - floor[i + 1]) + Math.abs(d.data[i + 2] - floor[i + 2]);
+      if (diff < 24) d.data[i + 3] = 0;
+    }
+    g.putImageData(d, 0, 0); _plantCut[key] = cv;
+  }
+  c.drawImage(_plantCut[key], sx, sy - 22);
 }
 function drawRecordBox(c, sx, sy) {
   const im = IMG[has('ritual_record') ? 'deco_record_box_open' : 'deco_record_box'];
