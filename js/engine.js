@@ -1766,8 +1766,15 @@ function renderOverlay(now) {
     const b = UI.black;
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, SW, SH);
     ctx.font = `22px ${SERIF}`; ctx.textAlign = 'center';
-    const lh = 42, top = SH / 2 - (b.lines.length * lh) / 2 + 14;
-    b.lines.forEach((l, i) => { if (i > b.idx) return; ctx.fillStyle = `rgba(236,230,240,${b.alphas[i]})`; ctx.fillText(l, SW / 2, top + i * lh); });
+    // 긴 줄은 화면 폭에 맞춰 접는다 (접힌 줄끼리는 간격을 좁게)
+    const lh = 42, sub = 30;
+    const parts = b.lines.map(l => wrap(l, SW - 96, `22px ${SERIF}`));
+    const total = parts.reduce((h, p) => h + lh + (p.length - 1) * sub, 0);
+    let y = SH / 2 - total / 2 + 14;
+    parts.forEach((p, i) => {
+      if (i <= b.idx) { ctx.fillStyle = `rgba(236,230,240,${b.alphas[i]})`; p.forEach((l, j) => ctx.fillText(l, SW / 2, y + j * sub)); }
+      y += lh + (p.length - 1) * sub;
+    });
     ctx.textAlign = 'left';
   }
   if (UI.banner) {
