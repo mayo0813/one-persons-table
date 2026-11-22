@@ -1709,7 +1709,7 @@ Object.assign(MAPS, {
       { id: 'platesM', x: 12, y: 6, action: async () => { if (G.day === 6) await momoPlates(); else await narr('접시가 치워져 있다.'); } },
       { id: 'box', x: 16, y: 4, deco: drawRecordBox, action: async () => { if (G.day === 6 && flag('d6_doorD') && !has('ritual_record')) await branch('d6_record', recordBox); else await recordBox(); } },
       { id: 'leverA', x: 2, y: 1, deco: (c, x, y) => drawLever(c, x, y, flag('d6_leverA')), action: async () => { await narr(flag('d6_leverA') ? '모모가 손잡이를 붙잡고 있다.' : '벽에 박힌 손잡이다. 기록함 쪽으로 쇠줄이 이어져 있다.'); } },
-      { id: 'leverB', x: 12, y: 7, block: true, deco: (c, x, y) => drawLever(c, x, y + 6, flag('d6_doorD')), action: async () => { await leverB(); } },   // 안쪽(예배당 쪽) 벽 앞에 선 레버
+      { id: 'leverB', x: 17, y: 7, block: true, deco: (c, x, y) => drawLever(c, x, y + 6, flag('d6_doorD')), action: async () => { await leverB(); } },   // 안쪽(예배당 쪽) 벽 앞에 선 레버
       { id: 'leverC', x: 6, y: 12, deco: (c, x, y) => drawLever(c, x, y, flag('d6_sideClosed')), action: async () => { await leverC(); } },
       { id: 'tray', x: 7, y: 11, block: false, deco: drawTray, show: () => G.day === 6 && !!flag('d6_chase'), action: async () => { await throwTray(); } },
       { id: 'boxD', x: 16, y: 14, action: async () => { await emptyLunchbox(); } },
