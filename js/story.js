@@ -1791,7 +1791,7 @@ async function wakeInClassroom(lines, yuriBeside = false) {
   if (y) { if (yuriBeside) { y.x = 11; y.y = 10; y.dir = 'left'; } else { y.x = 12; y.y = 10; y.dir = 'up'; } }
   UI.fade = 1;
   applyAmbience();
-  await black(lines);
+  if (lines && lines.length) await black(lines);
   await fadeIn(900);
   if (!yuriBeside) { heroPose(null); player.dir = 'up'; await momoSeatNote(); }
   return y;
@@ -2128,7 +2128,7 @@ async function yuriTalk5(e) {
 /* ================================================================= DAY 6 — 일체 (D6-01 ~ D6-11) */
 async function startDay6() {
   G.day = 6; G.phase = 0; G.objective = '';
-  const y = await wakeInClassroom(['꿈을 꾸지 않았다.']);
+  const y = await wakeInClassroom([]);
   await think('(빈자리가 늘었다. 어제 분명 누가 앉아 있던 자리인데, 얼굴이 떠오르지 않는다.)');
   await teacherIn();
   await say('teacher', '좋은 아침이에요, 여러분!', 0);
