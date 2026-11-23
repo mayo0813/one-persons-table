@@ -2635,11 +2635,13 @@ STORY.lastSeat = async function () {
   await narr('유리가 맞은편의 빈 의자를 가리킨다. 화면 이쪽을 향해.');
   const c = await ask(['……싫어.', '……그래.'], '유리가 기다린다.');
   if (c === 0) {
-    await say('yuri', '그렇구나.', 2);
-    await say('yuri', '괜찮아. 대답은 해 줬잖아.', 0);
-    await say('yuri', '그럼 이번엔 네가 먼저 일어나. 식탁은 내가 치울게.', 1);
+    await say('yuri', '……싫어?', 3);
+    await say('yuri', '괜찮아. 싫다는 말도 대답이니까.', 5);
+    await say('yuri', '교리 4장. 사랑하는 이가 남긴 것을 기꺼이 받아들이십시오.', 0);
+    await say('yuri', '네가 남긴 그 말도, 내가 받아 둘게. 하나도 안 남기고.', 5);
+    await say('yuri', '그러니까 가. 이번엔 네가 먼저 일어나.', 0);
     await fadeOut(1500); UI.cg = null; UI.cgAlpha = 0;
-    await black(['식탁에서 일어난다.', '창을 닫으면, 3월 13일도 끝난다.']);
+    await black(['식탁에서 일어난다.', '등 뒤에서, 숟가락이 빈 접시를 긁는 소리가 났다.', '창을 닫으면, 3월 13일도 끝난다.']);
   } else {
     await say('yuri', '……고마워.', 1);
     await say('yuri', '그럼 내일도 와. 그 다음 날도.', 5);
