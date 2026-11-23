@@ -507,7 +507,7 @@ function updateTimers(dt) {
 async function run(fn) {
   busy++; path = [];
   try { await fn(); } catch (e) { console.error(e); }
-  finally { busy--; }
+  finally { busy--; if (!busy && typeof reqCheck === 'function') reqCheck(); }
 }
 function say(who, text, face = 0, opt = {}) {
   let name = null, faceSheet = null;
@@ -1889,8 +1889,11 @@ function renderMenu() {
   ctx.font = `bold 15px ${SERIF}`; ctx.fillStyle = COL.text; ctx.fillText('INVENTORY', INV.x + 24, INV.y + 34);
   icon('close', INV.x + INV.w - 36, INV.y + 18, COL.dim);
   ctx.fillStyle = 'rgba(150,146,172,0.4)'; ctx.fillRect(INV.x + 20, INV.y + 48, INV.w - 40, 1);
-  ctx.font = `15px ${FONT}`; ctx.fillStyle = COL.gold; ctx.fillText('목표', INV.x + 24, INV.y + 76);
-  ctx.fillStyle = COL.text; ctx.fillText(G.objective || '—', INV.x + 66, INV.y + 76);
+  const rq = typeof reqText === 'function' ? reqText() : '';
+  const oy = rq ? 70 : 76;   // 부탁이 있으면 두 줄
+  ctx.font = `15px ${FONT}`; ctx.fillStyle = COL.gold; ctx.fillText('목표', INV.x + 24, INV.y + oy);
+  ctx.fillStyle = COL.text; ctx.fillText(G.objective || '—', INV.x + 66, INV.y + oy);
+  if (rq) { ctx.font = `14px ${FONT}`; ctx.fillStyle = COL.gold; ctx.fillText('부탁', INV.x + 24, INV.y + 92); ctx.fillStyle = COL.think; ctx.fillText(rq, INV.x + 66, INV.y + 92); }
   const nSlots = INV.cols * 2;
   for (let i = 0; i < nSlots; i++) {
     const r = slotRect(i), id = G.items[i];
@@ -1915,7 +1918,7 @@ function renderMenu() {
     ctx.fillText(G.items.length ? '아이템을 고르면 설명이 보입니다.' : '아무것도 갖고 있지 않다.', px + 20, py + 40);
   }
   ctx.font = `13px ${FONT}`; ctx.fillStyle = COL.dim;
-  ctx.fillText('이동: 방향키/WASD·탭    결정: Z/Enter/Space·탭    메뉴: X/Esc    소리: M', 18, SH - 16);
+  ctx.fillText('이동: 방향키/WASD·탭    결정: Z/Enter/Space·탭    메뉴: X/Esc    지도: M    소리: N', 18, SH - 16);
 }
 const TITLE_MENU = { x: 278, y: 290, w: 260, row: 36 };
 const TITLE_OPTS = () => ['NEW GAME', 'CONTINUE', 'LOAD', 'ENDINGS'].concat(endingsSeen().length ? ['RECORD'] : [], allEndingsSeen() ? ['GALLERY', 'LAST SEAT'] : [], [`OPTION — SOUND ${Sound.on ? 'ON' : 'OFF'}`], endingsSeen().includes('secret') ? ['EAT'] : []);

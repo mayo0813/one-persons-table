@@ -920,6 +920,7 @@ async function afternoon(lines, map, x, y) {
   await transfer(map, x, y, 'down', { fade: false });
   await fadeIn(800);
   setPhase(2);
+  await offerRequests('pm');
 }
 
 async function yuriClassroom(e) {
@@ -970,6 +971,78 @@ async function cgFlash(name, hold = 1600) {
   UI.cg = n; UI.cgAlpha = 1;
   await fadeIn(900); await wait(hold); await fadeOut(900);
   UI.cg = null; UI.cgAlpha = 0;
+}
+
+/* ================================================================= 오늘의 부탁 (선택 퀘스트)
+   숨은 장소로 이끄는 짧은 부탁. 보상은 따로 없고(그 장소의 원래 수치만), 다음 날 아침에 부탁한 사람의 반응이 붙는다.
+   G.flags.req = 진행 중인 부탁 / G.flags.reqDone_<id> = 끝낸 부탁 / G.flags.reqReact_<id> = 반응을 봤음 */
+const REQUESTS = [
+  { id: 'book', day: 1, when: 'pm', who: 's', text: '도서관에 책 반납하기',
+    intro: ['반 친구 하나가 다가와 얇은 책을 내민다.'], ask: '저기, 도서관에 이 책 좀 반납해 줄래? 나 오늘 바빠서.',
+    done: () => flag('book'),
+    react: async () => { await narr('어제 책을 부탁한 아이가 지나간다.'); await say('hero', '책, 반납해 뒀어.', 0); await say('s', '책? 나 도서관 안 가는데.', null); await think('(……분명 이 아이였는데.)'); } },
+  { id: 'clinic', day: 2, when: 'pm', who: 'teacher', text: '양호실에 서류 갖다주기',
+    intro: ['선생님이 복도에서 나를 불러 세운다.'], ask: '{N}, 양호실에 이 서류 좀 갖다줄래요? 기록부 옆에 두면 돼요.', face: 0,
+    done: () => flag('clinic_day2'),
+    react: async () => { await say('hero', '선생님, 어제 양호실에 서류 두고 왔어요.', 0); await say('teacher', '양호실이요? 우리 학교에 아픈 학생은 없어요.', 1); } },
+  { id: 'tree', day: 3, when: 'am', who: 'momo', text: '운동장 큰 나무 보기',
+    intro: ['모모가 내 책상 옆을 지나가다 멈춘다.'], ask: '……운동장 큰 나무. 오늘은 읽힐 거야.', face: 0,
+    done: () => flag('opt_tree'),
+    react: async () => { await narr('모모와 눈이 마주쳤다.'); await narr('모모는 대답 대신 고개만 한 번 끄덕였다.'); } },
+  { id: 'fridge', day: 3, when: 'pm', who: 's', text: '급식실 냉장고에서 우유 꺼내 오기',
+    intro: ['반 친구 하나가 다가온다. 입술이 하얗게 말라 있다.'], ask: '급식실 냉장고에서 우유 좀 꺼내 와 줄래? 나 너무 목말라.',
+    done: () => flag('fridgeOpen'),
+    react: async () => { await narr('어제 우유를 부탁한 아이의 자리가 비어 있다.'); await think('(……그 아이 이름이 생각나지 않는다.)'); } },
+  { id: 'drawer', day: 4, when: 'am', who: 'yuri', text: '기숙사 유리 서랍에서 머리빗 가져오기',
+    intro: [], ask: '{N|아|야}, 내 서랍에서 머리빗 좀 가져다줄래? 오늘은 안 잠갔어.', face: 0,
+    done: () => flag('opt_yuri_drawer'),
+    react: async () => { await say('yuri', '봤어?', 3); await say('yuri', '……괜찮아. 보라고 열어 둔 거야.', 5); } },
+  { id: 'office', day: 4, when: 'pm', who: 's', text: '교무실에 출석부 갖다 놓기',
+    intro: ['반 친구 하나가 출석부를 내민다.'], ask: '이거 교무실에 좀 갖다 놔 줄래? 선생님한테 직접 드려.',
+    done: () => flag('opt_teacher_name'),
+    react: async () => { await say('hero', '출석부, 선생님께 드렸어.', 0); await say('s', '출석부? 그거 원래 교무실에 있잖아.', null); } },
+  { id: 'mirror', day: 5, when: 'am', who: 'ian', text: '화장실 거울 보기',
+    intro: ['이안이 수첩을 덮으며 다가온다.'], ask: '화장실 거울, 오늘 꼭 봐. 네가 봐야 할 게 있어.', face: 2,
+    done: () => flag('mirrorSeen5'),
+    react: async () => { await say('ian', '봤구나.', 2); await say('ian', '……나도 봤어.', 3); } },
+  { id: 'cook', day: 5, when: 'pm', who: 's', text: '도서관에 요리책 반납하기',
+    intro: ['반 친구 하나가 두꺼운 책을 책상 위에 올려놓는다.'], ask: '도서관에 요리책 좀 반납해 줘. 뒷부분은…… 원래 그랬어.',
+    done: () => flag('opt_cookbook'),
+    react: async () => { await narr('책상 위에 도서관 반납 장부가 펼쳐져 있다.'); await narr('어제 날짜 칸에 이름이 하나 적혀 있다. 내 이름이다.'); await think('(빌린 기억이 없는데.)'); } },
+  { id: 'lost', day: 6, when: 'am', who: 'teacher', text: '교무실 분실물 상자 정리하기',
+    intro: ['조회가 끝나자 선생님이 나를 부른다.'], ask: '{N}, 교무실 분실물 상자 좀 정리해 줄래요? 주인을 찾아 주면 돼요.', face: 1,
+    pre: () => has('ribbon'), done: () => flag('lostFoundSeen'), react: null },
+];
+function reqText() { const r = G.flags.req && REQUESTS.find(q => q.id === G.flags.req); return r ? r.text : ''; }
+async function offerRequests(when) {
+  for (const r of REQUESTS) {
+    if (r.day !== G.day || r.when !== when || G.flags['reqGiven_' + r.id]) continue;
+    if (r.pre && !r.pre()) continue;
+    if (r.done()) continue;                       // 이미 해 둔 일이면 부탁하지 않는다
+    G.flags['reqGiven_' + r.id] = true;
+    for (const l of r.intro) await narr(l);
+    await say(r.who, r.ask, r.who === 's' ? null : (r.face || 0));
+    G.flags.req = r.id;
+    toast('부탁 — ' + r.text);
+    return;                                       // 한 번에 하나
+  }
+}
+async function requestMorning() {
+  // 어제 끝낸 부탁의 반응 → 새 아침 부탁
+  for (const r of REQUESTS) {
+    if (r.day !== G.day - 1 || !G.flags['reqDone_' + r.id] || G.flags['reqReact_' + r.id] || !r.react) continue;
+    G.flags['reqReact_' + r.id] = true;
+    await r.react();
+  }
+  if (G.flags.req) { const r = REQUESTS.find(q => q.id === G.flags.req); if (!r || r.day < G.day) delete G.flags.req; }   // 하루가 지나면 사라진다
+  await offerRequests('am');
+}
+/* 조사·대화가 끝날 때마다 엔진이 부른다 */
+function reqCheck() {
+  const id = G.flags.req; if (!id) return;
+  const r = REQUESTS.find(q => q.id === id);
+  if (!r) { delete G.flags.req; return; }
+  if (r.done()) { delete G.flags.req; G.flags['reqDone_' + id] = true; toast('부탁 완료 — ' + r.text); }
 }
 
 /* 기숙사 침대 — 잠들면 의식의 다음 단계로 재구성된다 */
@@ -1133,6 +1206,7 @@ async function chapelClass() {
   banner('DAY 2', '나눔');
   await wait(1200);
   objective('점심시간 — 급식실로');
+  if (G.day === 2) await requestMorning();
 }
 
 /* D2-03 찬송가 사이 / 찢어진 편지 */
@@ -1166,6 +1240,7 @@ async function chapelAltar() {
 /* D2-06 화장실 거울 — 대사 없이, 거울 속 어깨가 아주 짧게 늦는다. memory 80 이상이면 정상 */
 async function restroomMirror() {
   if (G.day === 5) {
+    flag('mirrorSeen5', true);
     await narr('거울 속에 내가 서 있다. 교복색이 지금과 다르다.');
     await think('(……예전의 나다.)');
     await narr('거울 속의 내가 입모양으로 말한다. 『늦었네.』');
@@ -1815,6 +1890,7 @@ async function beginDay(n, sub, obj) {
   banner('DAY ' + n, sub);
   await wait(1200);
   objective(obj);
+  await requestMorning();
 }
 
 /* ================================================================= DAY 4 — 섭취 (D4-01 ~ D4-08) */
@@ -1933,6 +2009,7 @@ async function specialMeal() {
   await say('momo', '……뭘 봐. 유리한테나 가 봐. 오늘 들은 건 잊지 말고.', 1);
   setPhase(2);
   objective('교실의 유리에게 가자');
+  await offerRequests('pm');
 }
 
 /* D4-08 방과 후 / 유리의 대답 */
