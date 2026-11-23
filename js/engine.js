@@ -1251,7 +1251,7 @@ function frame(now) {
   for (const e of EVENTS) updateEntity(e, dtx);
   updateEntity(player, busy ? dtx : dt);
   if (Input.hit('F2')) UI.debug = !UI.debug;
-  if (Input.hit('KeyM')) { Sound.toggle(); toast(Sound.on ? '소리 켬' : '소리 끔'); }
+  if (Input.hit('KeyN')) { Sound.toggle(); toast(Sound.on ? '소리 켬' : '소리 끔'); }   // M은 지도
 
   if (UI.nameEntry) { /* HTML input이 처리 */ }
   else if (UI.doc) updateDoc(dt);

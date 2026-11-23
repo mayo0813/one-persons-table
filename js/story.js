@@ -716,12 +716,20 @@ const STORY = {
     await say('yuri', '어디긴. 학교지.', 0);
     await say('hero', '학교……?', 3);
     await say('yuri', '응.', 0);
-    await say('yuri', '……이번에는 처음이구나.', 5);
+    if (flag('eatRun')) {   // EAT 회차: 식탁의 주인을 본 뒤 다시 먹으러 온 회차
+      await say('yuri', '……이번에는, 처음이 아니구나.', 5);
+      await say('yuri', '어서 와. 접시는 그대로 뒀어.', 0);
+    } else await say('yuri', '……이번에는 처음이구나.', 5);
     await cgOff(800);
     applyAmbience();
     heroPose(null); player.dir = 'right';
-    await think('(이번에는?)');
-    await think('(그보다, 내 이름은 어떻게 알지?)');
+    if (flag('eatRun')) {
+      await think('(……처음이 아니다.)');
+      await think('(이 교실도, 이 목소리도. 입 안에 무언가를 삼킨 맛이 남아 있다.)');
+    } else {
+      await think('(이번에는?)');
+      await think('(그보다, 내 이름은 어떻게 알지?)');
+    }
     await say('yuri', '곧 조회 시작해. 네 자리는 창가에서 두 번째야. 앉아 있어.', 0);
     await move(y, 'Ru');
     player.dir = 'up';
@@ -745,8 +753,8 @@ async function homeroom() {
     await say('hero', '……', 5);
     await say('teacher', '어머, 부끄러운가 봐요. 괜찮아요. 이 친구는 {N|이에요|예요}. 다들 잘해 주세요.', 0);
   }
-  await say('all', '어서 와, {N}.', null);
-  await think('(열 명이 넘는 목소리가 한 사람처럼 겹쳤다.)');
+  await say('all', flag('eatRun') ? '다시 어서 와, 식탁의 주인.' : '어서 와, {N}.', null);
+  await think(flag('eatRun') ? '(열 명이 넘는 목소리가 한 사람처럼 겹쳤다. ……전부 내 목소리였다.)' : '(열 명이 넘는 목소리가 한 사람처럼 겹쳤다.)');
   await say('teacher', '우리 학교에서 제일 중요한 건 딱 하나예요. 서로를 사랑하는 것.', 0);
   await say('teacher', '우리는 모두 서로를 사랑하고 있단다. 그렇죠?', 1);
   await say('all', '네.', null);
@@ -2604,7 +2612,7 @@ const STARTERS = { 2: startDay2, 3: startDay3, 4: startDay4, 5: startDay5, 6: st
 STORY.eat = async function () {
   const s = readSave();
   const name = (s && s.name) || G.name || '……', gender = (s && s.gender) || G.gender || 'f';
-  Object.assign(G, { name, gender, day: 1, phase: 0, vars: { memory: 0, yuri_sync: 0, momo_trust: 0, cult_truth: 0 }, flags: {}, items: [], objective: '' });
+  Object.assign(G, { name, gender, day: 1, phase: 0, vars: { memory: 0, yuri_sync: 0, momo_trust: 0, cult_truth: 0 }, flags: { eatRun: true }, items: [], objective: '' });
   bgm(null);
   UI.fade = 1;
   await black(['……', '잘 먹겠습니다.']);
@@ -3154,7 +3162,7 @@ function pieceCount() { return pieceList().length; }
 /* SECRET — 제단의 제0차 보고서 */
 async function endSecret() {
   dflag('final', true);
-  await narr('제단 위에 접시가 하나 놓여 있다. 『{N}』');
+  await narr(flag('eatRun') ? '제단 위에 접시가 하나 놓여 있다. 『{N}』 ……이름 아래에, 내 글씨로 줄이 하나 더 그어져 있다.' : '제단 위에 접시가 하나 놓여 있다. 『{N}』');
   await narr('접시 밑에 아주 오래된 종이가 깔려 있다. 일체회의 최초 의식 기록이다.');
   await doc(ZERO_DOC);
   give('zero_report');
