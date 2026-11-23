@@ -920,7 +920,6 @@ async function afternoon(lines, map, x, y) {
   await transfer(map, x, y, 'down', { fade: false });
   await fadeIn(800);
   setPhase(2);
-  await offerRequests('pm');
 }
 
 async function yuriClassroom(e) {
@@ -977,55 +976,86 @@ async function cgFlash(name, hold = 1600) {
    숨은 장소로 이끄는 짧은 부탁. 보상은 따로 없고(그 장소의 원래 수치만), 다음 날 아침에 부탁한 사람의 반응이 붙는다.
    G.flags.req = 진행 중인 부탁 / G.flags.reqDone_<id> = 끝낸 부탁 / G.flags.reqReact_<id> = 반응을 봤음 */
 const REQUESTS = [
-  { id: 'book', day: 1, when: 'pm', who: 's', text: '도서관에 책 반납하기',
-    intro: ['반 친구 하나가 다가와 얇은 책을 내민다.'], ask: '저기, 도서관에 이 책 좀 반납해 줄래? 나 오늘 바빠서.',
+  { id: 'book', npc: { map: 'hall2', x: 14, y: 3, sprite: 'student_1', dir: 'down' },
+    day: 1, when: 'pm', who: 's', text: '도서관에 책 반납하기',
+    intro: ['반 친구가 얇은 책을 내민다.'], ask: '저기, 도서관에 이 책 좀 반납해 줄래? 나 오늘 바빠서.',
     done: () => flag('book'),
     react: async () => { await narr('어제 책을 부탁한 아이가 지나간다.'); await say('hero', '책, 반납해 뒀어.', 0); await say('s', '책? 나 도서관 안 가는데.', null); await think('(……분명 이 아이였는데.)'); } },
-  { id: 'clinic', day: 2, when: 'pm', who: 'teacher', text: '양호실에 서류 갖다주기',
-    intro: ['선생님이 복도에서 나를 불러 세운다.'], ask: '{N}, 양호실에 이 서류 좀 갖다줄래요? 기록부 옆에 두면 돼요.', face: 0,
+  { id: 'clinic', npc: { map: 'hall1', x: 4, y: 2, sprite: 'teacher', dir: 'down' },
+    day: 2, when: 'pm', who: 'teacher', text: '양호실에 서류 갖다주기',
+    intro: [], ask: '{N}, 양호실에 이 서류 좀 갖다줄래요? 기록부 옆에 두면 돼요.', face: 0,
     done: () => flag('clinic_day2'),
     react: async () => { await say('hero', '선생님, 어제 양호실에 서류 두고 왔어요.', 0); await say('teacher', '양호실이요? 우리 학교에 아픈 학생은 없어요.', 1); } },
-  { id: 'tree', day: 3, when: 'am', who: 'momo', text: '운동장 큰 나무 보기',
-    intro: ['모모가 내 책상 옆을 지나가다 멈춘다.'], ask: '……운동장 큰 나무. 오늘은 읽힐 거야.', face: 0,
+  { id: 'tree', npc: { map: 'field', attach: 'momoF3' },
+    day: 3, when: 'am', who: 'momo', text: '운동장 큰 나무 보기',
+    intro: [], ask: '……운동장 큰 나무. 오늘은 읽힐 거야.', face: 0,
     done: () => flag('opt_tree'),
     react: async () => { await narr('모모와 눈이 마주쳤다.'); await narr('모모는 대답 대신 고개만 한 번 끄덕였다.'); } },
-  { id: 'fridge', day: 3, when: 'pm', who: 's', text: '급식실 냉장고에서 우유 꺼내 오기',
-    intro: ['반 친구 하나가 다가온다. 입술이 하얗게 말라 있다.'], ask: '급식실 냉장고에서 우유 좀 꺼내 와 줄래? 나 너무 목말라.',
+  { id: 'fridge', npc: { map: 'hall1', x: 7, y: 2, sprite: 'student_2', dir: 'down' },
+    day: 3, when: 'pm', who: 's', text: '급식실 냉장고에서 우유 꺼내 오기',
+    intro: ['입술이 하얗게 말라 있다.'], ask: '급식실 냉장고에서 우유 좀 꺼내 와 줄래? 나 너무 목말라.',
     done: () => flag('fridgeOpen'),
     react: async () => { await narr('어제 우유를 부탁한 아이의 자리가 비어 있다.'); await think('(……그 아이 이름이 생각나지 않는다.)'); } },
-  { id: 'drawer', day: 4, when: 'am', who: 'yuri', text: '기숙사 유리 서랍에서 머리빗 가져오기',
+  { id: 'drawer', npc: { map: 'hall1', x: 17, y: 2, sprite: 'yuri', dir: 'down' },
+    day: 4, when: 'am', who: 'yuri', text: '기숙사 유리 서랍에서 머리빗 가져오기',
     intro: [], ask: '{N|아|야}, 내 서랍에서 머리빗 좀 가져다줄래? 오늘은 안 잠갔어.', face: 0,
     done: () => flag('opt_yuri_drawer'),
     react: async () => { await say('yuri', '봤어?', 3); await say('yuri', '……괜찮아. 보라고 열어 둔 거야.', 5); } },
-  { id: 'office', day: 4, when: 'pm', who: 's', text: '교무실에 출석부 갖다 놓기',
+  { id: 'office', npc: { map: 'hall1', x: 14, y: 3, sprite: 'student_3', dir: 'down' },
+    day: 4, when: 'pm', who: 's', text: '교무실에 출석부 갖다 놓기',
     intro: ['반 친구 하나가 출석부를 내민다.'], ask: '이거 교무실에 좀 갖다 놔 줄래? 선생님한테 직접 드려.',
     done: () => flag('opt_teacher_name'),
     react: async () => { await say('hero', '출석부, 선생님께 드렸어.', 0); await say('s', '출석부? 그거 원래 교무실에 있잖아.', null); } },
-  { id: 'mirror', day: 5, when: 'am', who: 'ian', text: '화장실 거울 보기',
-    intro: ['이안이 수첩을 덮으며 다가온다.'], ask: '화장실 거울, 오늘 꼭 봐. 네가 봐야 할 게 있어.', face: 2,
+  { id: 'mirror', npc: { map: 'hall2', attach: 'ian2' },
+    day: 5, when: 'am', who: 'ian', text: '화장실 거울 보기',
+    intro: [], ask: '화장실 거울, 오늘 꼭 봐. 네가 봐야 할 게 있어.', face: 2,
     done: () => flag('mirrorSeen5'),
     react: async () => { await say('ian', '봤구나.', 2); await say('ian', '……나도 봤어.', 3); } },
-  { id: 'cook', day: 5, when: 'pm', who: 's', text: '도서관에 요리책 반납하기',
-    intro: ['반 친구 하나가 두꺼운 책을 책상 위에 올려놓는다.'], ask: '도서관에 요리책 좀 반납해 줘. 뒷부분은…… 원래 그랬어.',
+  { id: 'cook', npc: { map: 'hall2', x: 15, y: 3, sprite: 'student_4', dir: 'down' },
+    day: 5, when: 'pm', who: 's', text: '도서관에 요리책 반납하기',
+    intro: ['반 친구가 두꺼운 책을 안고 있다.'], ask: '도서관에 요리책 좀 반납해 줘. 뒷부분은…… 원래 그랬어.',
     done: () => flag('opt_cookbook'),
     react: async () => { await narr('책상 위에 도서관 반납 장부가 펼쳐져 있다.'); await narr('어제 날짜 칸에 이름이 하나 적혀 있다. 내 이름이다.'); await think('(빌린 기억이 없는데.)'); } },
-  { id: 'lost', day: 6, when: 'am', who: 'teacher', text: '교무실 분실물 상자 정리하기',
-    intro: ['조회가 끝나자 선생님이 나를 부른다.'], ask: '{N}, 교무실 분실물 상자 좀 정리해 줄래요? 주인을 찾아 주면 돼요.', face: 1,
+  { id: 'lost', npc: { map: 'hall1', x: 14, y: 2, sprite: 'teacher', dir: 'down' },
+    day: 6, when: 'am', who: 'teacher', text: '교무실 분실물 상자 정리하기',
+    intro: [], ask: '{N}, 교무실 분실물 상자 좀 정리해 줄래요? 주인을 찾아 주면 돼요.', face: 1,
     pre: () => has('ribbon'), done: () => flag('lostFoundSeen'), react: null },
 ];
 function reqText() { const r = G.flags.req && REQUESTS.find(q => q.id === G.flags.req); return r ? r.text : ''; }
-async function offerRequests(when) {
-  for (const r of REQUESTS) {
-    if (r.day !== G.day || r.when !== when || G.flags['reqGiven_' + r.id]) continue;
-    if (r.pre && !r.pre()) continue;
-    if (r.done()) continue;                       // 이미 해 둔 일이면 부탁하지 않는다
-    G.flags['reqGiven_' + r.id] = true;
-    for (const l of r.intro) await narr(l);
-    await say(r.who, r.ask, r.who === 's' ? null : (r.face || 0));
-    G.flags.req = r.id;
-    toast('부탁 — ' + r.text);
-    return;                                       // 한 번에 하나
+/* 부탁하는 사람은 그 시간대에 복도에 서 있고 머리 위에 「!」가 뜬다. 말을 걸면 부탁을 받는다 */
+function reqInWindow(r) { return G.day === r.day && (r.when === 'am' ? G.phase <= 1 && !dflag('lunch') : G.phase === 2); }
+function reqGiven(r) { return !!G.flags['reqGiven_' + r.id]; }
+function reqShow(r) { return reqInWindow(r) && (reqGiven(r) || ((!r.pre || r.pre()) && !r.done())); }
+async function talkRequest(r, e) {
+  if (e) e.dir = { up: 'down', down: 'up', left: 'right', right: 'left' }[player.dir];
+  if (reqGiven(r)) {
+    if (G.flags['reqDone_' + r.id] || r.done()) { if (r.who === 's') await say('s', '……고마워.', null); else await say(r.who, '고마워.', 0); }
+    else if (r.who === 's') await say('s', '……부탁해.', null); else await say(r.who, '부탁할게.', 0);
+    return;
   }
+  G.flags['reqGiven_' + r.id] = true;
+  for (const l of r.intro) await narr(l);
+  await say(r.who, r.ask, r.who === 's' ? null : (r.face || 0));
+  G.flags.req = r.id;
+  toast('부탁 — ' + r.text);
+}
+for (const r of REQUESTS) {
+  const n = r.npc, M = MAPS[n.map];
+  if (!M) continue;
+  if (n.attach) {   // 이미 그 자리에 있는 인물(모모·이안)에게 붙인다: 원래 대화 뒤에 부탁
+    const base = M.events.find(e => e.id === n.attach);
+    if (!base) continue;
+    const orig = base.action, origMark = base.mark;
+    base.mark = () => (reqShow(r) && !reqGiven(r)) || (typeof origMark === 'function' ? origMark() : !!origMark);
+    base.action = async (e) => {
+      const pending = reqShow(r) && !reqGiven(r);
+      if (orig) await orig(e); else if (base.text) await narrs(typeof base.text === 'function' ? base.text() : base.text);
+      if (pending) await talkRequest(r, e);   // 원래 대화가 끝난 뒤 부탁
+    };
+    continue;
+  }
+  M.events.push({ id: 'req_' + r.id, x: n.x, y: n.y, sprite: n.sprite, dir: n.dir,
+    show: () => reqShow(r), mark: () => !reqGiven(r), action: async (e) => { await talkRequest(r, e); } });
 }
 async function requestMorning() {
   // 어제 끝낸 부탁의 반응 → 새 아침 부탁
@@ -1035,7 +1065,6 @@ async function requestMorning() {
     await r.react();
   }
   if (G.flags.req) { const r = REQUESTS.find(q => q.id === G.flags.req); if (!r || r.day < G.day) delete G.flags.req; }   // 하루가 지나면 사라진다
-  await offerRequests('am');
 }
 /* 조사·대화가 끝날 때마다 엔진이 부른다 */
 function reqCheck() {
@@ -2009,7 +2038,6 @@ async function specialMeal() {
   await say('momo', '……뭘 봐. 유리한테나 가 봐. 오늘 들은 건 잊지 말고.', 1);
   setPhase(2);
   objective('교실의 유리에게 가자');
-  await offerRequests('pm');
 }
 
 /* D4-08 방과 후 / 유리의 대답 */

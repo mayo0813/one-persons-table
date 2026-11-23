@@ -1320,6 +1320,12 @@ function drawEntity(e, cam, isPlayer) {
       const fw = im.width / 3, fh = im.height / 4, h = Math.round(48 * fh / fw);   // 키 큰 시트(48×96 등)는 발끝 기준으로 위로 늘어난다
       ctx.drawImage(im, pat * fw, DIR_ROW[e.dir] * fh, fw, fh, sx, sy + 48 - h - (stepping ? 1 : 0), 48, h);
     }
+    if (!isPlayer && e.mark && (typeof e.mark !== 'function' || e.mark())) {   // 부탁할 사람 머리 위 「!」
+      const bob = Math.round(Math.sin(performance.now() / 260) * 2), top = sy + 48 - (im ? Math.round(48 * (im.height / 4) / (im.width / 3)) : 48) - 18 + bob;
+      ctx.fillStyle = 'rgba(10,8,16,0.85)'; ctx.fillRect(sx + 17, top - 2, 14, 18);
+      ctx.strokeStyle = '#c4283a'; ctx.strokeRect(sx + 17.5, top - 1.5, 13, 17);
+      ctx.font = `bold 14px ${FONT}`; ctx.fillStyle = '#ece6f4'; ctx.textAlign = 'center'; ctx.fillText('!', sx + 24, top + 12); ctx.textAlign = 'left';
+    }
   }
   ctx.globalAlpha = 1;
 }
