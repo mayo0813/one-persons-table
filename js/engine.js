@@ -51,7 +51,8 @@ const ASSET_LIST = {
 const OPTIONAL_ASSETS = {
   cg: ['cg_day1_dream', 'cg_day2_bed', 'cg_day3_basement_eye', 'cg_day4_special_meal', 'scare_mirror', 'scare_eye', 'scare_meal', 'scare_stairs',
     /* 대본 v2.0 새 CG — 없으면 기존 그림이나 CG 없이 진행 */
-    'cg_mem_ribbon', 'cg_mem_firstlunch', 'cg_day3_yuri_awake', 'cg_day6_momo_tag', 'cg_day6_ian_momo', 'cg_day7_momo_gate', 'cg_day7_leftover', 'cg_end_true_lunchbox'],
+    'cg_mem_ribbon', 'cg_mem_firstlunch', 'cg_day3_yuri_awake', 'cg_day6_momo_tag', 'cg_day6_ian_momo', 'cg_day7_momo_gate', 'cg_day7_leftover', 'cg_end_true_lunchbox',
+    'cg_title_after'],   // 결말 5개를 모두 본 뒤의 타이틀
   icons: ['icon_ribbon', 'icon_yuri_notes', 'icon_ian_pieces', 'icon_ian_notebook', 'deco_record_box', 'deco_record_box_open', 'deco_tray'],
   characters: ['monster_shadow', 'monster_union', 'monster_union_anim', 'monster_shadow_anim'],
 };
@@ -1940,7 +1941,7 @@ function markDocSeen(spec) {
   } catch (e) {}
 }
 function allEndingsSeen() { const s = endingsSeen(); return typeof ENDINGS_INFO !== 'undefined' && ENDINGS_INFO.every(e => s.includes(e.id)); }
-const GALLERY_CG = ['cg_title', 'cg_prologue', 'cg_day1_dream', 'cg_day2_bed', 'cg_day3_dream', 'cg_day3_yuri_awake', 'cg_day3_basement_eye',
+const GALLERY_CG = ['cg_title', 'cg_title_after', 'cg_prologue', 'cg_day1_dream', 'cg_day2_bed', 'cg_day3_dream', 'cg_day3_yuri_awake', 'cg_day3_basement_eye',
   'cg_day4_special_meal', 'cg_mem_ribbon', 'cg_mem_ticket', 'cg_mem_letter', 'cg_mem_firstlunch', 'cg_mem_lunchbox', 'cg_day6_plates',
   'cg_day6_momo_tag', 'cg_day6_ian_momo', 'cg_day7_momo_gate', 'cg_day7_table', 'cg_day7_leftover',
   'cg_end_bad1', 'cg_end_bad2', 'cg_end_normal', 'cg_end_true', 'cg_end_true_lunchbox', 'cg_end_secret',
@@ -2196,7 +2197,8 @@ function renderRecord() {
 }
 function renderTitle(now) {
   const T = UI.title;
-  if (IMG.cg_title) ctx.drawImage(IMG.cg_title, 0, 0, SW, SH);
+  const titleKey = allEndingsSeen() && IMG.cg_title_after ? 'cg_title_after' : 'cg_title';   // 결말을 다 보면 주인 없는 식탁으로
+  if (IMG[titleKey]) { ctx.drawImage(IMG[titleKey], 0, 0, SW, SH); markCgSeen(titleKey); }
   const g = ctx.createLinearGradient(0, 80, 0, 300);
   g.addColorStop(0, 'rgba(12,14,26,0)'); g.addColorStop(0.5, 'rgba(12,14,26,0.55)'); g.addColorStop(1, 'rgba(12,14,26,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 80, SW, 220);
