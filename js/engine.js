@@ -621,6 +621,7 @@ function applyAmbience() {
    doc({type:'paper', title, lines:[...], torn})
    줄 앞 기호: '#' 제목, '!' 붉은 강조, '~' 흐린 글씨 */
 function doc(spec) {
+  if (!UI.title) markDocSeen(spec);
   return new Promise(res => { UI.doc = { spec, page: 0, res, t: 0 }; Sound.sfx('page'); onDocPage(); });
 }
 function docPages() { const s = UI.doc.spec; return s.type === 'book' ? s.pages.length : 1; }
@@ -1058,7 +1059,7 @@ function renderSlots() {
 
 /* ------------------------------------------------------------------ title & name entry */
 function showTitle() {
-  sepia(false); UI.msg = UI.choice = UI.black = UI.menu = UI.doc = UI.slots = UI.record = null; UI.cg = null; UI.cgAlpha = 0; UI.fade = 0; UI.skip = false; UI.banner = null;
+  sepia(false); UI.msg = UI.choice = UI.black = UI.menu = UI.doc = UI.slots = UI.record = UI.gallery = null; UI.cg = null; UI.cgAlpha = 0; UI.fade = 0; UI.skip = false; UI.banner = null;
   Object.assign(UI.tint, { a: 0 });
   MAP = null; EVENTS = [];
   const has = !!latestSave();
@@ -1081,8 +1082,9 @@ function updateTitle(dt) {
   if ((label === 'CONTINUE' || label === 'LOAD') && !T.hasSave) { Sound.sfx('cursor'); return; }
   if (label === 'LOAD') { openSlots('load'); return; }
   if (label === 'RECORD') { const sv = latestSave(); if (sv && sv.gender) G.gender = sv.gender; openRecord(); return; }
+  if (label === 'GALLERY') { const sv = latestSave(); if (sv) { G.name = sv.name || G.name; if (sv.gender) G.gender = sv.gender; } Sound.sfx('select'); UI.gallery = { tab: 0, idx: 0, view: null }; return; }
   Sound.sfx('select'); UI.title = null;
-  if (label === 'NEW GAME') run(newGame); else if (label === 'EAT') run(() => STORY.eat()); else run(continueGame);
+  if (label === 'NEW GAME') run(newGame); else if (label === 'EAT') run(() => STORY.eat()); else if (label === 'LAST SEAT') run(() => STORY.lastSeat()); else run(continueGame);
 }
 
 /* ------------------------------------------------------------------ 엔딩 목록 */
@@ -1251,11 +1253,12 @@ function frame(now) {
   if (Input.hit('KeyM')) { Sound.toggle(); toast(Sound.on ? '소리 켬' : '소리 끔'); }
 
   if (UI.nameEntry) { /* HTML input이 처리 */ }
+  else if (UI.doc) updateDoc(dt);
+  else if (UI.gallery) updateGallery();
   else if (UI.endings) updateEndings();
   else if (UI.record) updateRecord();
   else if (UI.slots) updateSlots();
   else if (UI.title) updateTitle(dt);
-  else if (UI.doc) updateDoc(dt);
   else if (UI.choice) updateChoice();
   else if (UI.msg && !UI.msg.sticky) updateMsg(dt);
   else if (UI.black) updateBlack(dt);
@@ -1694,6 +1697,7 @@ function renderScare(now) {
   }
   const S = UI.scare; if (!S) return;
   const im = IMG['scare_' + S.key];
+  if (im) markCgSeen('scare_' + S.key);
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, SW, SH);
   if (im) { const z = 1 + S.t / S.ms * 0.12; ctx.drawImage(im, SW / 2 - SW * z / 2, SH / 2 - SH * z / 2, SW * z, SH * z); }
   else {
@@ -1725,7 +1729,7 @@ function render(now) {
   ctx.save();
   ctx.fillStyle = MAP && !UI.title ? VOID_COL : '#0c0e16'; ctx.fillRect(0, 0, SW, SH);
   if (UI.shake > 0) ctx.translate((Math.random() * 2 - 1) * UI.shake, (Math.random() * 2 - 1) * UI.shake);
-  if (UI.title) { renderTitle(now); ctx.restore(); renderOverlay(now); if (UI.endings) renderEndings(); if (UI.slots) renderSlots(); if (UI.record) renderRecord(); return; }
+  if (UI.title) { renderTitle(now); ctx.restore(); renderOverlay(now); if (UI.endings) renderEndings(); if (UI.slots) renderSlots(); if (UI.record) renderRecord(); if (UI.gallery && !UI.doc) renderGallery(); return; }
   if (MAP) {
     const cam = camera();
     for (let y = 0; y < MAP.rows.length; y++) for (let x = 0; x < MAP.rows[0].length; x++) {
@@ -1754,7 +1758,7 @@ function render(now) {
     ctx.fillStyle = g; ctx.fillRect(0, 0, SW, SH);
     drawFlicker(now);
   }
-  if (UI.cg && UI.cgAlpha > 0 && IMG[cgKey(UI.cg)]) { ctx.globalAlpha = UI.cgAlpha; ctx.drawImage(IMG[cgKey(UI.cg)], 0, 0, SW, SH); drawCgOverlay(UI.cg); ctx.globalAlpha = 1; }
+  if (UI.cg && UI.cgAlpha > 0 && IMG[cgKey(UI.cg)]) { ctx.globalAlpha = UI.cgAlpha; ctx.drawImage(IMG[cgKey(UI.cg)], 0, 0, SW, SH); drawCgOverlay(UI.cg); if (UI.cgAlpha > 0.5) markCgSeen(cgKey(UI.cg)); ctx.globalAlpha = 1; }
   if (UI.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${UI.fade})`; ctx.fillRect(-20, -20, SW + 40, SH + 40); }
   ctx.restore();
   if (hudVisible()) renderHUD();
@@ -1913,12 +1917,131 @@ function renderMenu() {
   ctx.fillText('이동: 방향키/WASD·탭    결정: Z/Enter/Space·탭    메뉴: X/Esc    소리: M', 18, SH - 16);
 }
 const TITLE_MENU = { x: 278, y: 290, w: 260, row: 36 };
-const TITLE_OPTS = () => ['NEW GAME', 'CONTINUE', 'LOAD', 'ENDINGS'].concat(endingsSeen().length ? ['RECORD'] : [], [`OPTION — SOUND ${Sound.on ? 'ON' : 'OFF'}`], endingsSeen().includes('secret') ? ['EAT'] : []);
+const TITLE_OPTS = () => ['NEW GAME', 'CONTINUE', 'LOAD', 'ENDINGS'].concat(endingsSeen().length ? ['RECORD'] : [], allEndingsSeen() ? ['GALLERY', 'LAST SEAT'] : [], [`OPTION — SOUND ${Sound.on ? 'ON' : 'OFF'}`], endingsSeen().includes('secret') ? ['EAT'] : []);
 const ENDING_KEY = 'one_persons_table_endings';
 const LAST_END_KEY = 'one_persons_table_last_end';
 function lastEnding() { try { return localStorage.getItem(LAST_END_KEY); } catch (e) { return null; } }
 function endingsSeen() { try { return JSON.parse(localStorage.getItem(ENDING_KEY) || '[]'); } catch (e) { return []; } }
 function addEnding(id) { try { const a = endingsSeen(); if (!a.includes(id)) a.push(id); localStorage.setItem(ENDING_KEY, JSON.stringify(a)); localStorage.setItem(LAST_END_KEY, id); } catch (e) {} }
+
+/* ------------------------------------------------------------------ 갤러리 (결말 5개를 모두 본 뒤 타이틀에 열린다)
+   본 CG·깜놀 그림과 읽은 문서를 브라우저에 남겨 두고 다시 본다. 못 본 것은 ?로 */
+const CG_SEEN_KEY = 'one_persons_table_cg_seen', DOC_SEEN_KEY = 'one_persons_table_docs_seen';
+function lsGet(k, d) { try { return JSON.parse(localStorage.getItem(k) || 'null') || d; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+let _cgSeen = null;
+function cgSeenSet() { if (!_cgSeen) _cgSeen = new Set(lsGet(CG_SEEN_KEY, ['cg_title'])); return _cgSeen; }
+function markCgSeen(key) { const S = cgSeenSet(); if (!key || S.has(key)) return; S.add(key); lsSet(CG_SEEN_KEY, [...S]); }
+function markDocSeen(spec) {
+  try {
+    const list = lsGet(DOC_SEEN_KEY, []), k = JSON.stringify(spec).slice(0, 400);
+    if (list.some(d => d.k === k)) return;
+    list.push({ k, spec }); lsSet(DOC_SEEN_KEY, list);
+  } catch (e) {}
+}
+function allEndingsSeen() { const s = endingsSeen(); return typeof ENDINGS_INFO !== 'undefined' && ENDINGS_INFO.every(e => s.includes(e.id)); }
+const GALLERY_CG = ['cg_title', 'cg_prologue', 'cg_day1_dream', 'cg_day2_bed', 'cg_day3_dream', 'cg_day3_yuri_awake', 'cg_day3_basement_eye',
+  'cg_day4_special_meal', 'cg_mem_ribbon', 'cg_mem_ticket', 'cg_mem_letter', 'cg_mem_firstlunch', 'cg_mem_lunchbox', 'cg_day6_plates',
+  'cg_day6_momo_tag', 'cg_day6_ian_momo', 'cg_day7_momo_gate', 'cg_day7_table', 'cg_day7_leftover',
+  'cg_end_bad1', 'cg_end_bad2', 'cg_end_normal', 'cg_end_true', 'cg_end_true_lunchbox', 'cg_end_secret',
+  'scare_mirror', 'scare_eye', 'scare_meal', 'scare_stairs'];
+function galleryCgs() {
+  const out = [];
+  for (const n of GALLERY_CG) {
+    if (IMG[n + '_f'] || IMG[n + '_m']) { for (const g of ['f', 'm']) if (IMG[`${n}_${g}`]) out.push(`${n}_${g}`); }
+    else if (IMG[n]) out.push(n);
+  }
+  return out;
+}
+function galleryDocs() { return lsGet(DOC_SEEN_KEY, []).map(d => d.spec); }
+function docLabel(spec) {
+  if (spec.title) return spec.title;
+  const lines = spec.type === 'book' ? [] : (spec.lines || []);
+  const first = lines.find(l => typeof l === 'string' && l.replace(/^[#!~]/, '').trim()) || '쪽지';
+  const t = first.replace(/^[#!~]/, '').trim();
+  return t.length > 26 ? t.slice(0, 26) + '…' : t;
+}
+const GAL = { x: 40, y: 112, cols: 4, cw: 172, ch: 130, gap: 12, perCg: 12, rowH: 42, perDoc: 10 };
+const GAL_TABS = [{ x: 180, y: 34, w: 90, h: 34 }, { x: 280, y: 34, w: 90, h: 34 }];
+function galleryCount(Gl) { return Gl.tab === 0 ? galleryCgs().length : galleryDocs().length; }
+function galleryOpen(Gl, i) {
+  if (Gl.tab === 0) {
+    const key = galleryCgs()[i];
+    if (key && cgSeenSet().has(key)) { Gl.view = key; Sound.sfx('select'); } else Sound.sfx('cursor');
+  } else {
+    const spec = galleryDocs()[i];
+    if (spec) doc(spec);
+  }
+}
+function updateGallery() {
+  const Gl = UI.gallery, t = Input.takeTap(), d = Input.dirHit();
+  if (Gl.view) { if (Input.ok() || Input.cancel() || t) { Gl.view = null; Sound.sfx('cursor'); } return; }
+  if (Input.cancel()) { UI.gallery = null; Sound.sfx('select'); return; }
+  if (Input.hit('Tab') || Input.hit('KeyQ') || Input.hit('KeyE')) { Gl.tab = 1 - Gl.tab; Gl.idx = 0; Sound.sfx('cursor'); return; }
+  const n = galleryCount(Gl), cols = Gl.tab === 0 ? GAL.cols : 1;
+  if (n) {
+    if (d === 'left') { if (Gl.tab === 1) { Gl.tab = 0; Gl.idx = 0; } else Gl.idx = Math.max(0, Gl.idx - 1); Sound.sfx('cursor'); }
+    if (d === 'right') { if (Gl.tab === 1) { Gl.tab = 0; Gl.idx = 0; } else Gl.idx = Math.min(n - 1, Gl.idx + 1); Sound.sfx('cursor'); }
+    if (d === 'up') { Gl.idx = Math.max(0, Gl.idx - cols); Sound.sfx('cursor'); }
+    if (d === 'down') { Gl.idx = Math.min(n - 1, Gl.idx + cols); Sound.sfx('cursor'); }
+    if (Input.ok()) { galleryOpen(Gl, Gl.idx); return; }
+  }
+  if (t) {
+    for (let k = 0; k < 2; k++) if (inRect(t, GAL_TABS[k])) { if (Gl.tab !== k) { Gl.tab = k; Gl.idx = 0; Sound.sfx('cursor'); } return; }
+    if (inRect(t, END_CLOSE)) { UI.gallery = null; Sound.sfx('select'); return; }
+    if (Gl.tab === 0) {
+      const page = Math.floor(Gl.idx / GAL.perCg);
+      const c = Math.floor((t.x - GAL.x) / (GAL.cw + GAL.gap)), r = Math.floor((t.y - GAL.y) / (GAL.ch + GAL.gap));
+      const i = page * GAL.perCg + r * GAL.cols + c;
+      if (c >= 0 && c < GAL.cols && r >= 0 && r < 3 && i < n) { if (i === Gl.idx) galleryOpen(Gl, i); else { Gl.idx = i; Sound.sfx('cursor'); } }
+    } else {
+      const page = Math.floor(Gl.idx / GAL.perDoc), r = Math.floor((t.y - GAL.y) / GAL.rowH), i = page * GAL.perDoc + r;
+      if (t.x >= GAL.x && t.x <= SW - GAL.x && r >= 0 && r < GAL.perDoc && i < n) { if (i === Gl.idx) galleryOpen(Gl, i); else { Gl.idx = i; Sound.sfx('cursor'); } }
+    }
+  }
+}
+function renderGallery() {
+  const Gl = UI.gallery;
+  ctx.fillStyle = 'rgba(8,10,18,0.95)'; ctx.fillRect(0, 0, SW, SH);
+  if (Gl.view) { const im = IMG[Gl.view]; if (im) ctx.drawImage(im, 0, 0, SW, SH); return; }
+  ctx.font = `bold 22px ${SERIF}`; ctx.fillStyle = COL.text; ctx.fillText('GALLERY', 40, 58);
+  ['CG', '기록'].forEach((lb, k) => {
+    const R = GAL_TABS[k]; panel(R.x, R.y, R.w, R.h, Gl.tab === k ? 1 : 0.6);
+    ctx.font = `${Gl.tab === k ? 'bold ' : ''}15px ${FONT}`; ctx.fillStyle = Gl.tab === k ? COL.selText : COL.dim;
+    ctx.textAlign = 'center'; ctx.fillText(lb, R.x + R.w / 2, R.y + 22); ctx.textAlign = 'left';
+  });
+  ctx.fillStyle = 'rgba(150,146,172,0.4)'; ctx.fillRect(40, 84, SW - 80, 1);
+  if (Gl.tab === 0) {
+    const cgs = galleryCgs(), seen = cgSeenSet(), page = Math.floor(Gl.idx / GAL.perCg), pages = Math.max(1, Math.ceil(cgs.length / GAL.perCg));
+    ctx.font = `14px ${FONT}`; ctx.fillStyle = COL.gold; ctx.textAlign = 'right';
+    ctx.fillText(`${cgs.filter(k => seen.has(k)).length} / ${cgs.length}   ·   ${page + 1} / ${pages}쪽`, SW - 40, 58); ctx.textAlign = 'left';
+    cgs.slice(page * GAL.perCg, page * GAL.perCg + GAL.perCg).forEach((key, j) => {
+      const i = page * GAL.perCg + j, x = GAL.x + (j % GAL.cols) * (GAL.cw + GAL.gap), y = GAL.y + Math.floor(j / GAL.cols) * (GAL.ch + GAL.gap);
+      ctx.fillStyle = '#0c0e16'; ctx.fillRect(x, y, GAL.cw, GAL.ch);
+      if (seen.has(key) && IMG[key]) ctx.drawImage(IMG[key], x, y, GAL.cw, GAL.ch);
+      else { ctx.font = `bold 40px ${SERIF}`; ctx.fillStyle = 'rgba(150,146,172,0.3)'; ctx.textAlign = 'center'; ctx.fillText('?', x + GAL.cw / 2, y + GAL.ch / 2 + 14); ctx.textAlign = 'left'; }
+      ctx.strokeStyle = i === Gl.idx ? COL.sel : 'rgba(184,174,208,0.35)'; ctx.lineWidth = i === Gl.idx ? 3 : 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, GAL.cw - 1, GAL.ch - 1); ctx.lineWidth = 1;
+    });
+  } else {
+    const docs = galleryDocs(), page = Math.floor(Gl.idx / GAL.perDoc), pages = Math.max(1, Math.ceil(docs.length / GAL.perDoc));
+    ctx.font = `14px ${FONT}`; ctx.fillStyle = COL.gold; ctx.textAlign = 'right';
+    ctx.fillText(`읽은 문서 ${docs.length}   ·   ${page + 1} / ${pages}쪽`, SW - 40, 58); ctx.textAlign = 'left';
+    if (!docs.length) { ctx.font = `15px ${FONT}`; ctx.fillStyle = COL.dim; ctx.fillText('아직 남은 기록이 없다.', GAL.x, GAL.y + 26); }
+    docs.slice(page * GAL.perDoc, page * GAL.perDoc + GAL.perDoc).forEach((spec, j) => {
+      const i = page * GAL.perDoc + j, y = GAL.y + j * GAL.rowH, sel = i === Gl.idx;
+      panel(GAL.x, y, SW - GAL.x * 2 - 140, GAL.rowH - 6, sel ? 1 : 0.7);
+      if (sel) selBand(GAL.x + 8, y + 6, SW - GAL.x * 2 - 156, GAL.rowH - 18);
+      ctx.font = `15px ${SERIF}`; ctx.fillStyle = sel ? COL.selText : COL.text;
+      ctx.fillText(`${String(i + 1).padStart(2, '0')}  ${docLabel(spec)}`, GAL.x + 18, y + 25);
+    });
+  }
+  ctx.font = `13px ${FONT}`; ctx.fillStyle = COL.think;
+  ctx.fillText('방향키 이동 · 확인 보기 · Q/E 탭 · 취소 닫기', 40, SH - 38);
+  panel(END_CLOSE.x, END_CLOSE.y, END_CLOSE.w, END_CLOSE.h);
+  icon('close', END_CLOSE.x + 16, END_CLOSE.y + 12, COL.gold);
+  ctx.font = `15px ${FONT}`; ctx.fillStyle = COL.text; ctx.fillText('닫기', END_CLOSE.x + 44, END_CLOSE.y + 26);
+}
 
 /* ------------------------------------------------------------------ 회차 기록부
    하루가 시작될 때와 끝날 때의 상태를 남겨 두고, 엔딩을 하나라도 본 뒤에는 타이틀의 RECORD에서
@@ -2094,14 +2217,15 @@ function renderTitle(now) {
   ctx.fillStyle = '#ece6f4'; ctx.fillRect(SW / 2 - 160, 248, 320, 2);
   pxDiamond(SW / 2, 249, 4, '#c4283a', '#6a1420');
   const opts = TITLE_OPTS(), M = TITLE_MENU;
+  M.row = opts.length > 7 ? 30 : 36;   // 메뉴가 길어지면 줄 간격을 줄인다
   panel(M.x, M.y, M.w, 24 + opts.length * M.row);
   opts.forEach((o, i) => {
     const y = M.y + 12 + i * M.row;
     if (i === T.idx) selBand(M.x + 14, y, M.w - 28, M.row - 6);
     ctx.font = `${o.startsWith('OPTION') ? 14 : 17}px ${SERIF}`;
-    if (o === 'EAT') ctx.font = `bold 17px ${SERIF}`;
-    ctx.fillStyle = i === T.idx ? COL.selText : ((o === 'CONTINUE' || o === 'LOAD') && !T.hasSave ? COL.dim : (o === 'EAT' ? '#c4283a' : '#b8aed0'));
-    ctx.fillText(o, SW / 2, y + 22 + (o.startsWith('OPTION') ? 0 : 1));
+    if (o === 'EAT' || o === 'LAST SEAT') ctx.font = `bold 17px ${SERIF}`;
+    ctx.fillStyle = i === T.idx ? COL.selText : ((o === 'CONTINUE' || o === 'LOAD') && !T.hasSave ? COL.dim : (o === 'EAT' ? '#c4283a' : o === 'LAST SEAT' ? '#ece6f4' : '#b8aed0'));
+    ctx.fillText(o, SW / 2, y + M.row - 14 + (o.startsWith('OPTION') ? 0 : 1));
   });
   ctx.font = `12px ${FONT}`; ctx.fillStyle = 'rgba(60,56,74,0.75)';
   ctx.fillText('v5.3 — 기획서 v2.0 · 스크립트 v2.1', SW / 2, SH - 16);

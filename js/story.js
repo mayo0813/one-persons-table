@@ -2612,6 +2612,46 @@ STORY.eat = async function () {
 };
 
 
+/* 타이틀의 LAST SEAT — 결말 5개를 모두 본 플레이어에게만. 유리가 화면 이쪽(플레이어)에게 말을 건다 */
+STORY.lastSeat = async function () {
+  const sv = readSave();
+  if (sv) { G.name = sv.name || G.name; G.gender = sv.gender || G.gender; }
+  if (!G.name) G.name = '……';
+  bgm(null); UI.fade = 1;
+  await black(['다섯 번의 식탁이 끝났다.', '……그런데 아직, 의자 하나가 비어 있다.']);
+  UI.cg = cgPick('cg_day7_table'); UI.cgAlpha = UI.cg ? 1 : 0;
+  bgm('title2');
+  await fadeIn(1400);
+  await narr('식탁 맞은편에 유리가 앉아 있다.');
+  await narr('……나를 보고 있지 않다. 조금 더 바깥을 보고 있다.');
+  await say('yuri', '안녕.', 0);
+  await say('yuri', '{N|이라고|라고} 부르면 될까. ……아니, 그건 그 애 이름이지.', 3);
+  await say('yuri', '나는 지금, 그 이름을 적어 넣은 너한테 말하는 거야.', 5);
+  await say('yuri', '너도 봤잖아. 같은 날로 몇 번이나 돌아왔어. 3월 13일로.', 0);
+  await say('yuri', '먹어 보고, 먹혀 보고, 일어나 보고. 제단 앞에도 서 보고.', 1);
+  await say('yuri', '교리 2장. 사랑하는 이와 한 식탁에 앉으십시오. 내 몫과 네 몫을 가르지 마십시오.', 0);
+  await say('yuri', '너는 이 식탁에서 하나도 남기지 않았어. 결말까지 전부.', 5);
+  await say('yuri', '그러니까 우리, 이제 같은 식탁에 앉은 거야.', 0);
+  await narr('유리가 맞은편의 빈 의자를 가리킨다. 화면 이쪽을 향해.');
+  const c = await ask(['……아니.', '……그래.'], '유리가 기다린다.');
+  if (c === 0) {
+    await say('yuri', '그렇구나.', 2);
+    await say('yuri', '괜찮아. 대답은 해 줬잖아.', 0);
+    await say('yuri', '그럼 이번엔 네가 먼저 일어나. 식탁은 내가 치울게.', 1);
+    await fadeOut(1500); UI.cg = null; UI.cgAlpha = 0;
+    await black(['식탁에서 일어난다.', '창을 닫으면, 3월 13일도 끝난다.']);
+  } else {
+    await say('yuri', '……고마워.', 1);
+    await say('yuri', '그럼 내일도 와. 그 다음 날도.', 5);
+    await say('yuri', '나는 여기 있을게. 늘 같은 날에.', 0);
+    await fadeOut(1500); UI.cg = null; UI.cgAlpha = 0;
+    await black(['다시 시작하면, 3월 13일이다.']);
+  }
+  await wait(400);
+  await black(['『한 사람 몫의 식탁』', '플레이해 줘서 고마워.']);
+  showTitle();
+};
+
 /* ================================================================= 수치의 연출 신호 (기획서 v1.2 표) */
 /* 화면에 숫자는 보이지 않는다. 학교가 조금씩 다르게 행동한다.
    memory ≥50  배식대 냄새가 '어디서 맡아 본 냄새'로 바뀜
