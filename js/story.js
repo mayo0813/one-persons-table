@@ -2633,7 +2633,7 @@ STORY.lastSeat = async function () {
   await say('yuri', '너는 이 식탁에서 하나도 남기지 않았어. 결말까지 전부.', 5);
   await say('yuri', '그러니까 우리, 이제 같은 식탁에 앉은 거야.', 0);
   await narr('유리가 맞은편의 빈 의자를 가리킨다. 화면 이쪽을 향해.');
-  const c = await ask(['……아니.', '……그래.'], '유리가 기다린다.');
+  const c = await ask(['……싫어.', '……그래.'], '유리가 기다린다.');
   if (c === 0) {
     await say('yuri', '그렇구나.', 2);
     await say('yuri', '괜찮아. 대답은 해 줬잖아.', 0);
