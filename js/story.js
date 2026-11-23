@@ -1658,7 +1658,7 @@ Object.assign(MAPS, {
     },
     events: [
       { id: 'door', x: 15, y: 1, touch: async () => { await transfer('hall2', 4, 2, 'down'); } },
-      { id: 'envelope', x: 8, y: 3, action: async () => { await oldLetter(); } },
+      { id: 'envelope', x: 10, y: 9, action: async () => { await oldLetter(); } },   // 내 자리(지금 교실의 빈 책상과 같은 자리)
     ],
   },
 
