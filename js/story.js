@@ -1304,7 +1304,7 @@ async function startDay3() {
   player.x = 10; player.y = 10; player.dir = 'up';
   UI.fade = 1;
   bgm('night');
-  await black(['꿈을 꾼다.', '어젯밤과 같은 꿈이다. 오늘은 더 선명하다.']);
+  await black(['또 꿈을 꾼다.', '같은 꿈인가?']);
   UI.cg = cgPick('cg_day3_dream'); UI.cgAlpha = UI.cg ? 1 : 0;
   await fadeIn(1200);
   await narr('침대가 두 개. 한쪽에는 내가, 다른 쪽에는 유리가 누워 있다.');
