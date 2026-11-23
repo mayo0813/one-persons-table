@@ -1757,6 +1757,20 @@ function render(now) {
     ents.sort((a, b) => (a.y * TILE + a.oy) - (b.y * TILE + b.oy));
     player.opacity = player.hiddenInChase && typeof Chase !== 'undefined' && Chase.active ? 0.45 : 1;
     for (const e of ents) drawEntity(e, cam, e === player);
+    if (typeof reqGlow === 'function') for (const t of reqGlow()) {   // 부탁 목표가 있는 칸이 빛난다 (밝은 바닥에서도 보이게 더하기 합성)
+      const cx = t.x * TILE + 24 - cam.x, cy = t.y * TILE + 24 - cam.y, k = 0.6 + 0.4 * Math.sin(now / 420);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, 38);
+      g.addColorStop(0, `rgba(255,230,170,${0.95 * k})`); g.addColorStop(0.4, `rgba(230,170,255,${0.55 * k})`); g.addColorStop(1, 'rgba(200,160,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(cx - 40, cy - 40, 80, 80);
+      ctx.strokeStyle = `rgba(255,240,200,${0.5 + 0.4 * k})`; ctx.lineWidth = 2;   // 칸 테두리
+      ctx.strokeRect(cx - 23, cy - 23, 46, 46); ctx.lineWidth = 1;
+      for (let i = 0; i < 4; i++) {   // 위로 떠오르는 빛 알갱이
+        const a = now / 900 + i * 1.6, px = cx + Math.cos(a) * 15, py = cy + 4 - ((now / 28 + i * 13) % 30);
+        ctx.fillStyle = `rgba(255,248,220,${0.9 * k})`; ctx.fillRect(Math.round(px), Math.round(py), 2, 2);
+      }
+      ctx.restore();
+    }
     if (typeof Chase !== 'undefined') Chase.renderAbove(cam, now);
     if (UI.tint.a > 0) { ctx.fillStyle = `rgba(${UI.tint.r},${UI.tint.g},${UI.tint.b},${UI.tint.a})`; ctx.fillRect(-20, -20, SW + 40, SH + 40); }
     // 가장자리 비네트
