@@ -991,7 +991,9 @@ async function sleepScene() {
     await black(['"아직도 모르겠어?"', '내 목소리였다.', '……아니, 유리의 목소리였다.']);
   } else if (d === 3) {
     await think('(눈을 떴다. 한밤중이다.)');
-    const shown = await cgShow(['cg_day3_yuri_awake'], 900);
+    // 잠들 때 화면이 이미 어두워져 있으므로, CG를 깔고 화면을 다시 밝힌다
+    const shown = cgPick('cg_day3_yuri_awake');
+    if (shown) { UI.cg = shown; UI.cgAlpha = 1; await fadeIn(900); }
     await say('yuri', '깼어?', 0);
     await say('yuri', '자는 거 보고 있었어.', 5);
     await say('hero', '……너는 안 자?', 2);
@@ -1008,7 +1010,7 @@ async function sleepScene() {
       await think('(어둠 속인데도 유리의 얼굴이 빨개지는 게 보였다. 불은 꺼져 있는데.)');
       gain('yuri_sync', 5);
     }
-    if (shown) await cgOff(700);
+    if (shown) { await fadeOut(700); UI.cg = null; UI.cgAlpha = 0; }
     await black(['꿈을 꾼다.', '긴 식탁이다. 흰 접시가 끝없이 놓여 있다.', '접시는 전부 비어 있다.', '식탁에 앉은 모두가 나를 보고 있다.']);
     await black(['"내일은 특별한 식사야."', '이안의 목소리였다.']);
   } else if (d === 4) {
