@@ -1777,7 +1777,7 @@ function render(now) {
     const g = ctx.createRadialGradient(SW / 2, SH / 2, SH * 0.35, SW / 2, SH / 2, SH * 0.85);
     g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(6,6,14,${0.45 + decayLevel() * 0.9})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, SW, SH);
-    drawFlicker(now);
+    // drawFlicker(now);   // 후반부 조명 깜빡임 — 오류처럼 보여서 끔
   }
   if (UI.cg && UI.cgAlpha > 0 && IMG[cgKey(UI.cg)]) { ctx.globalAlpha = UI.cgAlpha; ctx.drawImage(IMG[cgKey(UI.cg)], 0, 0, SW, SH); drawCgOverlay(UI.cg); if (UI.cgAlpha > 0.5) markCgSeen(cgKey(UI.cg)); ctx.globalAlpha = 1; }
   if (UI.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${UI.fade})`; ctx.fillRect(-20, -20, SW + 40, SH + 40); }
