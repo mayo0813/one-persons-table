@@ -424,12 +424,49 @@ function hasBatchim(word) {
   if (ch < 0xAC00 || ch > 0xD7A3) return false;
   return (ch - 0xAC00) % 28 !== 0;
 }
+/* ------------------------------------------------------------------ 언어 (ko / en) */
+const LANG_KEY = 'one_persons_table_lang';
+let LANG = (() => { try { return localStorage.getItem(LANG_KEY) || 'ko'; } catch (e) { return 'ko'; } })();
+function setLang(l) { LANG = l; try { localStorage.setItem(LANG_KEY, l); } catch (e) {} document.documentElement.lang = l; applyLangDom(); }
+function T(s) {
+  if (LANG !== 'en' || typeof s !== 'string' || typeof EN === 'undefined') return s;
+  const v = EN[s]; return v === undefined ? s : v;
+}
+function L(ko, en) { return LANG === 'en' ? en : ko; }
+function trDoc(o) {
+  if (LANG !== 'en') return o;
+  if (typeof o === 'string') return T(o);
+  if (Array.isArray(o)) return o.map(trDoc);
+  if (o && typeof o === 'object') { const r = {}; for (const k in o) r[k] = trDoc(o[k]); return r; }
+  return o;
+}
+const DOM_TEXT = [
+  ['#name-entry label', '이름을 입력해 주세요 (최대 6자)', 'Enter your name (up to 8 letters)'],
+  ['#name-ok', '확인', 'OK'],
+  ['#abtn .a', '결정', 'OK'],
+  ['#abtn .b', '메뉴', 'Menu'],
+  ['#rotate p', '휴대폰을 <b>가로</b>로 돌려 주세요.<br><small>가로 화면에서 글자가 더 크게 보여요.</small>', 'Please turn your phone <b>sideways</b>.<br><small>Text is larger in landscape.</small>'],
+  ['#rotate-skip', '세로로 계속하기', 'Continue in portrait'],
+];
+function applyLangDom() {
+  for (const [sel, ko, en] of DOM_TEXT) { const el = document.querySelector(sel); if (el) el.innerHTML = L(ko, en); }
+  const inp = document.getElementById('name-input'); if (inp) inp.maxLength = LANG === 'en' ? 8 : 6;
+  document.title = L('한 사람 몫의 식탁', "One Person's Table");
+  document.documentElement.lang = LANG;
+}
+(() => {
+  const P = CanvasRenderingContext2D.prototype, ft = P.fillText, st = P.strokeText, mt = P.measureText;
+  P.fillText = function (s, ...a) { return ft.call(this, LANG === 'en' ? T(s) : s, ...a); };
+  P.strokeText = function (s, ...a) { return st.call(this, LANG === 'en' ? T(s) : s, ...a); };
+  P.measureText = function (s) { return mt.call(this, LANG === 'en' ? T(s) : s); };
+})();
 function fmt(s) {
+  s = T(s);
   return s.replace(/\{N\|([^|}]*)\|([^}]*)\}/g, (_, a, b) => G.name + (hasBatchim(G.name) ? a : b))
           .replace(/\{N\}/g, G.name);
 }
 function wrap(text, maxW, font) {
-  ctx.font = font;
+  ctx.font = font; text = T(text);
   const out = [];
   for (const para of text.split('\n')) {
     let line = '';
@@ -566,9 +603,9 @@ function has(id) { return G.items.includes(id); }
 function give(id) {
   if (has(id)) return;
   G.items.push(id); Sound.sfx('chime');
-  toast(`${ITEMS[id].name}을(를) 얻었다.`);
+  toast(L(`${ITEMS[id].name}을(를) 얻었다.`, `Got: ${T(ITEMS[id].name)}.`));
 }
-function objective(text) { G.objective = text; toast('목표 — ' + text); }
+function objective(text) { G.objective = text; toast(T('목표 — ') + T(text)); }
 function setPhase(p) { G.phase = p; applyAmbience(); autosave(); }
 function ev(id) { return EVENTS.find(e => e.id === id); }
 function face(e, dir) { e.dir = dir; }
@@ -623,7 +660,7 @@ function applyAmbience() {
    줄 앞 기호: '#' 제목, '!' 붉은 강조, '~' 흐린 글씨 */
 function doc(spec) {
   if (!UI.title) markDocSeen(spec);
-  return new Promise(res => { UI.doc = { spec, page: 0, res, t: 0 }; Sound.sfx('page'); onDocPage(); });
+  return new Promise(res => { UI.doc = { spec: trDoc(spec), page: 0, res, t: 0 }; Sound.sfx('page'); onDocPage(); });
 }
 function docPages() { const s = UI.doc.spec; return s.type === 'book' ? s.pages.length : 1; }
 function onDocPage() {
@@ -651,13 +688,42 @@ function updateDoc(dt) {
   if (d.page < n - 1 && !Input.cancel()) { d.page++; d.t = 0; Sound.sfx('page'); onDocPage(); return; }
   UI.doc = null; d.res();
 }
+function docFont(line, base) {
+  if (line.startsWith('#')) return ['#', line.slice(1).trim(), `bold ${base + 4}px ${SERIF}`];
+  if (line.startsWith('!')) return ['!', line.slice(1), `bold ${base}px ${SERIF}`];
+  if (line.startsWith('~')) return ['~', line.slice(1), `italic ${base - 2}px ${SERIF}`];
+  return ['', line, `${base}px ${SERIF}`];
+}
+/* 영어일 때: 문서 줄을 폭에 맞게 접는다 (머리 기호 유지) */
+function docWrap(lines, w, base) {
+  const out = [];
+  for (const raw of lines) {
+    const l = LANG === 'en' ? T(String(raw)) : raw;
+    if (LANG !== 'en' || !l) { out.push({ l, k: 1 }); continue; }
+    const [pre, s, font] = docFont(l, base);
+    wrap(T(s), w, font).forEach((x, i) => out.push({ l: pre + x, k: i ? 0.66 : 1 }));
+  }
+  return out;
+}
+/* 문서 줄 배치: 영어로 길어져 넘치면 글자 크기와 줄 간격을 함께 줄인다 */
+function docFit(lines, w, base, lh, avail) {
+  for (let b = base; ; b--) {
+    const ls = docWrap(lines, w, b), step = lh * b / base, cont = b + 5;
+    const ys = []; let y = 0;
+    ls.forEach((o, i) => { if (i) y += o.k < 1 ? cont + (o.l[0] === '#' ? 5 : 0) : step; ys.push(y); });
+    if (y + step * 0.5 <= avail || LANG !== 'en') return { ls, ys, base: b };
+    if (b <= 12) { const k = avail / (y + step * 0.5); return { ls, ys: ys.map(v => v * k), base: b }; }
+  }
+}
 function docLine(line, x, y, w, align = 'left', base = 19) {
+  line = T(line);
+  if (LANG === 'en' && /^[#!~]/.test(line)) { const r = T(line.slice(1).trim()); if (r !== line.slice(1).trim()) line = line[0] + r; }
   let col = '#2e2630', font = `${base}px ${SERIF}`, s = line;
   if (s.startsWith('#')) { s = s.slice(1).trim(); font = `bold ${base + 4}px ${SERIF}`; col = '#2a1e28'; }
   else if (s.startsWith('!')) { s = s.slice(1); col = '#7a1a26'; font = `bold ${base}px ${SERIF}`; }
   else if (s.startsWith('~')) { s = s.slice(1); col = '#8a7e74'; font = `italic ${base - 2}px ${SERIF}`; }
   ctx.font = font; ctx.fillStyle = col; ctx.textAlign = align;
-  ctx.fillText(s, align === 'center' ? x + w / 2 : x, y);
+  if (LANG === 'en') ctx.fillText(s, align === 'center' ? x + w / 2 : x, y, w); else ctx.fillText(s, align === 'center' ? x + w / 2 : x, y);
   ctx.textAlign = 'left';
 }
 function tornEdge(x, y, w, h, side) {
@@ -708,7 +774,7 @@ function drawSchoolMap(now) {
       ctx.strokeStyle = '#6a5c56'; ctx.lineWidth = 1.5; ctx.strokeRect(rx + 0.5, ry + 0.5, rw - 1, rhh - 1);
       ctx.fillStyle = '#ece4d2'; ctx.fillRect(gx + r.x * cw + 4, r.below ? cy + ch - 2 : cy - 6, cw - 8, 8);   // 문
       ctx.font = `bold 14px ${SERIF}`; ctx.fillStyle = '#2e2630'; ctx.textAlign = 'center';
-      ctx.fillText(r.label, rx + rw / 2, ry + rhh / 2 + 5); ctx.textAlign = 'left';
+      ctx.fillText(r.label, rx + rw / 2, ry + rhh / 2 + 5, rw - 6); ctx.textAlign = 'left';
       if (here && here.room === r.id) dot(rx + rw / 2, ry + rhh / 2 + 22);
     });
     if (here && here.floor === fi && here.hallX != null) dot(gx + (here.hallX + 0.5) * cw, cy + ch / 2);
@@ -736,7 +802,8 @@ function renderDoc(now) {
     [['left', x], ['right', x + half]].forEach(([side, px]) => {
       if (side === 'right' && p.album) { drawAlbum(px + 10, y + 30, half - 20); return; }
       const wob = side === 'right' && p.wobble ? p.wobble : 0;   // 오른쪽 페이지 글줄이 미세하게 어긋난다
-      (p[side] || []).forEach((l, i) => docLine(l, px + 44 + (wob ? Math.sin(now / 420 + i * 1.7) * wob : 0), y + 64 + i * lh + (wob ? Math.sin(now / 610 + i) * wob * 0.5 : 0), half - 88, p.center ? 'center' : 'left'));
+      const { ls, ys, base } = docFit(p[side] || [], half - 88, 19, lh, 330);
+      ls.forEach((o, i) => docLine(o.l, px + 44 + (wob ? Math.sin(now / 420 + i * 1.7) * wob : 0), y + 64 + ys[i] + (wob ? Math.sin(now / 610 + i) * wob * 0.5 : 0), half - 88, p.center ? 'center' : 'left', base));
     });
     if (p.torn) tornEdge(x + half, y, half, h, 'right');
     ctx.font = `13px ${SERIF}`; ctx.fillStyle = '#8a7e74'; ctx.textAlign = 'center';
@@ -753,12 +820,14 @@ function renderDoc(now) {
     const rows = s.rows, rh = Math.min(30, (h - 140) / Math.max(1, rows.length));
     let cx = x + 28; const hy = y + 86;
     ctx.fillStyle = '#d8ccb4'; ctx.fillRect(x + 20, hy - 22, w - 40, 30);
-    s.cols.forEach(([name, cw]) => { docLine('#' + name, cx, hy, cw, 'left', 13); cx += cw; });
+    const cws = s.cols.map(c => c[1]);
+    if (LANG === 'en') { const room = w - 56, sum = cws.reduce((a, v) => a + v, 0); if (sum > room) cws.forEach((v, j) => cws[j] = v * room / sum); }
+    s.cols.forEach(([name], j) => { docLine('#' + name, cx, hy, cws[j] - 8, 'left', 13); cx += cws[j]; });
     rows.forEach((r, i) => {
       const ry = hy + 14 + (i + 1) * rh;
       ctx.fillStyle = 'rgba(120,100,80,0.25)'; ctx.fillRect(x + 20, ry + 8, w - 40, 1);
       let cx2 = x + 28;
-      r.forEach((cell, j) => { docLine(String(cell), cx2, ry, s.cols[j][1], 'left', 15); cx2 += s.cols[j][1]; });
+      r.forEach((cell, j) => { docLine(String(cell), cx2, ry, cws[j] - 8, 'left', 15); cx2 += cws[j]; });
     });
     if (s.note) docLine('~' + s.note, x, y + h - 22, w, 'center', 15);
   } else {
@@ -767,7 +836,8 @@ function renderDoc(now) {
     ctx.fillStyle = '#f2ecdf'; ctx.fillRect(x, y, w, h);
     ctx.fillStyle = 'rgba(120,100,80,0.18)'; for (let i = 0; i < 12; i++) ctx.fillRect(x + 30, y + 92 + i * 30, w - 60, 1);
     if (s.title) docLine('#' + s.title, x, y + 54, w, 'center', 19);
-    s.lines.forEach((l, i) => docLine(l, x + 40, y + 116 + i * 30, w - 80, 'left', 18));
+    const { ls, ys, base } = docFit(s.lines, w - 80, 18, 30, h - 140);
+    ls.forEach((o, i) => docLine(o.l, x + 40, y + 116 + ys[i], w - 80, 'left', base));
     if (s.torn) tornEdge(x - 4, y, w + 8, h, 'bottom');
     ctx.restore();
   }
@@ -1005,7 +1075,7 @@ function slotAct(k) {
   if (S.mode === 'save') {
     if (data && S.confirm !== k) { S.confirm = k; Sound.sfx('cursor'); return; }
     const ok = saveSlot(id); UI.slots = null; Sound.sfx('select');
-    toast(ok ? `기록 ${id}에 저장했어요.` : '이 환경에서는 저장할 수 없어요.');
+    toast(ok ? L(`기록 ${id}에 저장했어요.`, `Saved to slot ${id}.`) : '이 환경에서는 저장할 수 없어요.');
     return;
   }
   if (!data) { Sound.sfx('cursor'); return; }
@@ -1044,11 +1114,11 @@ function renderSlots() {
     panel(SLOT_UI.x, y, SLOT_UI.w, SLOT_UI.row - 8, sel ? 1 : 0.75);
     if (sel) selBand(SLOT_UI.x + 10, y + 10, SLOT_UI.w - 20, SLOT_UI.row - 28);
     ctx.font = `bold 16px ${SERIF}`; ctx.fillStyle = sel ? COL.selText : COL.name;
-    ctx.fillText(id === 0 ? '자동 저장' : `기록 ${id}`, SLOT_UI.x + 26, y + 39);
+    ctx.fillText(id === 0 ? '자동 저장' : L(`기록 ${id}`, `Slot ${id}`), SLOT_UI.x + 26, y + 39);
     if (!data) { ctx.font = `15px ${FONT}`; ctx.fillStyle = sel ? COL.selText : COL.dim; ctx.fillText('— 비어 있음 —', SLOT_UI.x + 150, y + 39); return; }
     const where = (MAPS[data.map] && MAPS[data.map].name) || '';
     ctx.font = `16px ${FONT}`; ctx.fillStyle = sel ? COL.selText : COL.text;
-    ctx.fillText(`DAY ${data.day} · ${PHASE_NAMES[data.phase] || ''}${where ? ' · ' + where : ''}`, SLOT_UI.x + 150, y + 39);
+    ctx.fillText(`DAY ${data.day} · ${T(PHASE_NAMES[data.phase] || '')}${where ? ' · ' + T(where) : ''}`, SLOT_UI.x + 150, y + 39);
     ctx.font = `13px ${FONT}`; ctx.fillStyle = sel ? COL.selText : COL.dim; ctx.textAlign = 'right';
     ctx.fillText(S.confirm === k ? '한 번 더 누르면 덮어써요' : `${data.name || ''}  ${fmtTime(data.t)}`, SLOT_UI.x + SLOT_UI.w - 26, y + 39);
     ctx.textAlign = 'left';
@@ -1079,6 +1149,7 @@ function updateTitle(dt) {
   T.idx = pick;
   const label = opts[pick];
   if (label.startsWith('OPTION')) { Sound.toggle(); Sound.sfx('select'); return; }
+  if (label.startsWith('LANGUAGE')) { setLang(LANG === 'en' ? 'ko' : 'en'); Sound.sfx('select'); return; }
   if (label === 'ENDINGS') { const sv = latestSave(); if (sv && sv.gender) G.gender = sv.gender; Sound.sfx('select'); UI.endings = { idx: 0 }; return; }
   if ((label === 'CONTINUE' || label === 'LOAD') && !T.hasSave) { Sound.sfx('cursor'); return; }
   if (label === 'LOAD') { openSlots('load'); return; }
@@ -1115,7 +1186,7 @@ function renderEndings() {
     if (sel) selBand(END_LIST.x + 10, y + 10, END_LIST.w - 20, END_LIST.row - 30);
     ctx.font = `${got ? 'bold ' : ''}15px ${SERIF}`;
     ctx.fillStyle = sel ? COL.selText : (got ? COL.text : COL.dim);
-    const label = got ? `『${e.title}』` : '『 ??? 』';
+    const label = got ? L(`『${e.title}』`, T(e.title)) : L('『 ??? 』', '???');
     ctx.fillText(label, END_LIST.x + 24, y + 34);
   });
   const e = ENDINGS_INFO[E.idx], got = seen.includes(e.id);
@@ -1127,10 +1198,10 @@ function renderEndings() {
   else { ctx.font = `bold 64px ${SERIF}`; ctx.fillStyle = 'rgba(150,146,172,0.35)'; ctx.textAlign = 'center'; ctx.fillText('?', ix + iw / 2, iy + ih / 2 + 22); ctx.textAlign = 'left'; }
   ctx.strokeStyle = COL.edge; ctx.strokeRect(ix + 0.5, iy + 0.5, iw - 1, ih - 1);
   ctx.font = `bold 16px ${SERIF}`; ctx.fillStyle = got ? COL.name : COL.dim;
-  ctx.fillText(got ? `『${e.title}』` : '아직 보지 못한 결말', ix, iy + ih + 32);
+  ctx.fillText(got ? L(`『${e.title}』`, `"${T(e.title)}"`) : '아직 보지 못한 결말', ix, iy + ih + 32);
   if (got && e.trace) { ctx.font = `italic 14px ${SERIF}`; ctx.fillStyle = COL.gold; ctx.textAlign = 'right'; ctx.fillText(e.trace, ix + iw, iy + ih + 32); ctx.textAlign = 'left'; }
   ctx.font = `15px ${FONT}`; ctx.fillStyle = got ? COL.text : COL.think;
-  wrap(got ? e.desc : '힌트 — ' + e.hint, iw, `15px ${FONT}`).forEach((l, k) => ctx.fillText(l, ix, iy + ih + 60 + k * 24));
+  wrap(got ? e.desc : T('힌트 — ') + T(e.hint), iw, `15px ${FONT}`).forEach((l, k) => ctx.fillText(l, ix, iy + ih + 60 + k * 24));
   panel(END_CLOSE.x, END_CLOSE.y, END_CLOSE.w, END_CLOSE.h);
   icon('close', END_CLOSE.x + 16, END_CLOSE.y + 12, COL.gold);
   ctx.font = `15px ${FONT}`; ctx.fillStyle = COL.text; ctx.fillText('닫기', END_CLOSE.x + 44, END_CLOSE.y + 26);
@@ -1170,7 +1241,7 @@ async function loadState(s) {
   applyAmbience();
   if (STORY.resume && await STORY.resume()) return;
   await fadeIn(500);
-  if (G.objective) toast('목표 — ' + G.objective);
+  if (G.objective) toast(T('목표 — ') + T(G.objective));
 }
 
 /* ------------------------------------------------------------------ update */
@@ -1198,7 +1269,8 @@ function updateMsg(dt) {
   }
 }
 function choiceRect(n) {
-  const w = 380, h = n * 46 + 24;
+  let w = 380; const h = n * 46 + 24;
+  if (UI.choice) { ctx.save(); ctx.font = `19px ${FONT}`; for (const o of UI.choice.options) w = Math.max(w, ctx.measureText(o).width + 64); ctx.restore(); w = Math.min(w, SW - 48); }
   return { x: SW - w - 24, y: UI.msg ? 452 - h - 10 : (SH - h) / 2, w, h };
 }
 function updateChoice() {
@@ -1824,7 +1896,7 @@ function renderOverlay(now) {
       const y = r.y + 14 + i * 46;
       if (i === c.idx) selBand(r.x + 14, y, r.w - 28, 40);
       ctx.fillStyle = i === c.idx ? COL.selText : COL.text;
-      ctx.fillText(o, r.x + 30, y + 27);
+      ctx.fillText(o, r.x + 30, y + 27, r.w - 50);
     });
   }
   if (UI.menu) renderMenu();
@@ -1912,8 +1984,8 @@ function renderMenu() {
   const rq = typeof reqText === 'function' ? reqText() : '';
   const oy = rq ? 70 : 76;   // 부탁이 있으면 두 줄
   ctx.font = `15px ${FONT}`; ctx.fillStyle = COL.gold; ctx.fillText('목표', INV.x + 24, INV.y + oy);
-  ctx.fillStyle = COL.text; ctx.fillText(G.objective || '—', INV.x + 66, INV.y + oy);
-  if (rq) { ctx.font = `14px ${FONT}`; ctx.fillStyle = COL.gold; ctx.fillText('부탁', INV.x + 24, INV.y + 92); ctx.fillStyle = COL.think; ctx.fillText(rq, INV.x + 66, INV.y + 92); }
+  const lx = LANG === 'en' ? 100 : 66; ctx.fillStyle = COL.text; ctx.fillText(G.objective || '—', INV.x + lx, INV.y + oy, INV.w - lx - 40);
+  if (rq) { ctx.font = `14px ${FONT}`; ctx.fillStyle = COL.gold; ctx.fillText('부탁', INV.x + 24, INV.y + 92); ctx.fillStyle = COL.think; ctx.fillText(rq, INV.x + lx, INV.y + 92, INV.w - lx - 40); }
   const nSlots = INV.cols * 2;
   for (let i = 0; i < nSlots; i++) {
     const r = slotRect(i), id = G.items[i];
@@ -1941,7 +2013,7 @@ function renderMenu() {
   ctx.fillText('이동: 방향키/WASD·탭    결정: Z/Enter/Space·탭    메뉴: X/Esc    지도: M    소리: N', 18, SH - 16);
 }
 const TITLE_MENU = { x: 278, y: 290, w: 260, row: 36 };
-const TITLE_OPTS = () => ['NEW GAME', 'CONTINUE', 'LOAD', 'ENDINGS'].concat(endingsSeen().length ? ['RECORD'] : [], allEndingsSeen() ? ['GALLERY', 'LAST SEAT'] : [], [`OPTION — SOUND ${Sound.on ? 'ON' : 'OFF'}`], endingsSeen().includes('secret') ? ['EAT'] : []);
+const TITLE_OPTS = () => ['NEW GAME', 'CONTINUE', 'LOAD', 'ENDINGS'].concat(endingsSeen().length ? ['RECORD'] : [], allEndingsSeen() ? ['GALLERY', 'LAST SEAT'] : [], [`OPTION — SOUND ${Sound.on ? 'ON' : 'OFF'}`, `LANGUAGE — ${LANG === 'en' ? 'ENGLISH' : '한국어'}`], endingsSeen().includes('secret') ? ['EAT'] : []);
 const ENDING_KEY = 'one_persons_table_endings';
 const LAST_END_KEY = 'one_persons_table_last_end';
 function lastEnding() { try { return localStorage.getItem(LAST_END_KEY); } catch (e) { return null; } }
@@ -1979,11 +2051,12 @@ function galleryCgs() {
 }
 function galleryDocs() { return lsGet(DOC_SEEN_KEY, []).map(d => d.spec); }
 function docLabel(spec) {
+  spec = trDoc(spec);
   if (spec.title) return spec.title;
   const lines = spec.type === 'book' ? [] : (spec.lines || []);
-  const first = lines.find(l => typeof l === 'string' && l.replace(/^[#!~]/, '').trim()) || '쪽지';
+  const first = lines.find(l => typeof l === 'string' && l.replace(/^[#!~]/, '').trim()) || T('쪽지');
   const t = first.replace(/^[#!~]/, '').trim();
-  return t.length > 26 ? t.slice(0, 26) + '…' : t;
+  return t.length > (LANG === 'en' ? 44 : 26) ? t.slice(0, 26) + '…' : t;
 }
 const GAL = { x: 40, y: 112, cols: 4, cw: 172, ch: 130, gap: 12, perCg: 12, rowH: 42, perDoc: 10 };
 const GAL_TABS = [{ x: 180, y: 34, w: 90, h: 34 }, { x: 280, y: 34, w: 90, h: 34 }];
@@ -2038,7 +2111,7 @@ function renderGallery() {
   if (Gl.tab === 0) {
     const cgs = galleryCgs(), seen = cgSeenSet(), page = Math.floor(Gl.idx / GAL.perCg), pages = Math.max(1, Math.ceil(cgs.length / GAL.perCg));
     ctx.font = `14px ${FONT}`; ctx.fillStyle = COL.gold; ctx.textAlign = 'right';
-    ctx.fillText(`${cgs.filter(k => seen.has(k)).length} / ${cgs.length}   ·   ${page + 1} / ${pages}쪽`, SW - 40, 58); ctx.textAlign = 'left';
+    ctx.fillText(`${cgs.filter(k => seen.has(k)).length} / ${cgs.length}   ·   ${page + 1} / ${pages}${L('쪽', '')}`, SW - 40, 58); ctx.textAlign = 'left';
     cgs.slice(page * GAL.perCg, page * GAL.perCg + GAL.perCg).forEach((key, j) => {
       const i = page * GAL.perCg + j, x = GAL.x + (j % GAL.cols) * (GAL.cw + GAL.gap), y = GAL.y + Math.floor(j / GAL.cols) * (GAL.ch + GAL.gap);
       ctx.fillStyle = '#0c0e16'; ctx.fillRect(x, y, GAL.cw, GAL.ch);
@@ -2050,7 +2123,7 @@ function renderGallery() {
   } else {
     const docs = galleryDocs(), page = Math.floor(Gl.idx / GAL.perDoc), pages = Math.max(1, Math.ceil(docs.length / GAL.perDoc));
     ctx.font = `14px ${FONT}`; ctx.fillStyle = COL.gold; ctx.textAlign = 'right';
-    ctx.fillText(`읽은 문서 ${docs.length}   ·   ${page + 1} / ${pages}쪽`, SW - 40, 58); ctx.textAlign = 'left';
+    ctx.fillText(L(`읽은 문서 ${docs.length}   ·   ${page + 1} / ${pages}쪽`, `Documents read ${docs.length}   ·   ${page + 1} / ${pages}`), SW - 40, 58); ctx.textAlign = 'left';
     if (!docs.length) { ctx.font = `15px ${FONT}`; ctx.fillStyle = COL.dim; ctx.fillText('아직 남은 기록이 없다.', GAL.x, GAL.y + 26); }
     docs.slice(page * GAL.perDoc, page * GAL.perDoc + GAL.perDoc).forEach((spec, j) => {
       const i = page * GAL.perDoc + j, y = GAL.y + j * GAL.rowH, sel = i === Gl.idx;
@@ -2206,11 +2279,11 @@ function renderRecord() {
     } else {
       const newItems = d.end.items.filter(id => !d.start.items.includes(id)).map(id => ITEMS[id] ? ITEMS[id].name : id);
       ctx.font = `15px ${FONT}`; ctx.fillStyle = COL.name;
-      wrap('손에 넣은 것 — ' + (newItems.length ? newItems.join(', ') : '없음'), REC.pw - 48, `15px ${FONT}`).slice(0, 2)
+      wrap(T('손에 넣은 것 — ') + (newItems.length ? newItems.map(T).join(', ') : T('없음')), REC.pw - 48, `15px ${FONT}`).slice(0, 2)
         .forEach((l, k) => ctx.fillText(l, REC.px + 24, y + k * 22));
       if (d.end.ending) {
         const e = ENDINGS_INFO.find(x => x.id === d.end.ending);
-        ctx.fillStyle = COL.gold; ctx.fillText(`이 날의 끝 — 『${e && seen.includes(e.id) ? e.title : '???'}』`, REC.px + 24, y + 50);
+        ctx.fillStyle = COL.gold; ctx.fillText(L(`이 날의 끝 — 『${e && seen.includes(e.id) ? e.title : '???'}』`, `End of this day — "${e && seen.includes(e.id) ? T(e.title) : '???'}"`), REC.px + 24, y + 50);
       }
     }
   }
@@ -2228,7 +2301,7 @@ function renderTitle(now) {
   ctx.textAlign = 'center';
   ctx.font = `bold 54px ${SERIF}`;
   {   // 「한 사람 몫의」는 연보라빛 흰색, 「식탁」만 붉게
-    const a = '한 사람 몫의 ', b = '식탁', wa = ctx.measureText(a).width, wb = ctx.measureText(b).width, x0 = Math.round(SW / 2 - (wa + wb) / 2);
+    const a = L('한 사람 몫의 ', "One Person's "), b = L('식탁', 'Table'), wa = ctx.measureText(a).width, wb = ctx.measureText(b).width, x0 = Math.round(SW / 2 - (wa + wb) / 2);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#000'; ctx.fillText(a + b, x0 + 3, 199);
     ctx.fillStyle = '#ece6f4'; ctx.fillText(a, x0, 196);
@@ -2237,7 +2310,7 @@ function renderTitle(now) {
   }
   ctx.font = `15px ${SERIF}`; ctx.fillStyle = COL.name;
   if ('letterSpacing' in ctx) ctx.letterSpacing = '6px';
-  ctx.fillText("ONE PERSON'S TABLE", SW / 2 + 3, 232);
+  ctx.fillText(L("ONE PERSON'S TABLE", '한 사람 몫의 식탁'), SW / 2 + 3, 232);
   if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
   ctx.fillStyle = '#ece6f4'; ctx.fillRect(SW / 2 - 160, 248, 320, 2);
   pxDiamond(SW / 2, 249, 4, '#c4283a', '#6a1420');
@@ -2247,10 +2320,10 @@ function renderTitle(now) {
   opts.forEach((o, i) => {
     const y = M.y + 12 + i * M.row;
     if (i === T.idx) selBand(M.x + 14, y, M.w - 28, M.row - 6);
-    ctx.font = `${o.startsWith('OPTION') ? 14 : 17}px ${SERIF}`;
+    ctx.font = `${o.startsWith('OPTION') || o.startsWith('LANGUAGE') ? 14 : 17}px ${SERIF}`;
     if (o === 'EAT' || o === 'LAST SEAT') ctx.font = `bold 17px ${SERIF}`;
     ctx.fillStyle = i === T.idx ? COL.selText : ((o === 'CONTINUE' || o === 'LOAD') && !T.hasSave ? COL.dim : (o === 'EAT' ? '#c4283a' : o === 'LAST SEAT' ? '#ece6f4' : '#b8aed0'));
-    ctx.fillText(o, SW / 2, y + M.row - 14 + (o.startsWith('OPTION') ? 0 : 1));
+    ctx.fillText(o, SW / 2, y + M.row - 14 + (o.startsWith('OPTION') || o.startsWith('LANGUAGE') ? 0 : 1));
   });
   ctx.font = `12px ${FONT}`; ctx.fillStyle = 'rgba(60,56,74,0.75)';
   ctx.fillText('v5.3 — 기획서 v2.0 · 스크립트 v2.1', SW / 2, SH - 16);
@@ -2297,6 +2370,7 @@ function setupTouch() {
 
 /* ------------------------------------------------------------------ boot */
 async function boot() {
+  applyLangDom();
   Input.init();
   setupTouch();
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, SW, SH);

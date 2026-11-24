@@ -43,9 +43,9 @@ const ITEMS = {
   old_letter:  { name: '과거의 편지', icon: 'icon_old_letter', desc: '「네가 나를 잊는 것보다 네가 나를 먹는 게 나아」. 내 글씨다.', doc: () => fmtDoc(OLD_LETTER_DOC) },
   ritual_record: { name: '의식 기록', icon: 'icon_ritual_record', desc: '지하 예배당에 놓여 있던 일체회의 기록. 실패한 합일이 회차마다 적혀 있다.', doc: () => RITUAL_DOC() },
   lunchbox:    { name: '빈 도시락', icon: 'icon_lunchbox', desc: '뚜껑에 두 사람의 이름이 나란히 적힌 도시락통. 안은 비어 있다.' },
-  yuri_notes:  { get name() { return `유리의 쪽지 (${(G.flags.notes || []).length}/6)`; }, get icon() { return iconOf('icon_yuri_notes', 'icon_torn_letter'); },
+  yuri_notes:  { get name() { return L(`유리의 쪽지 (${(G.flags.notes || []).length}/6)`, `Yuri's Notes (${(G.flags.notes || []).length}/6)`); }, get icon() { return iconOf('icon_yuri_notes', 'icon_torn_letter'); },
     desc: '도시락 뚜껑 안쪽에 붙어 있던 쪽지. 귀엽다. 가끔 알 수 없는 걸 알고 있다.', doc: () => notesDoc() },
-  ian_pieces:  { get name() { return `이안의 수첩 조각 (${pieceList().length}/5)`; }, get icon() { return iconOf('icon_ian_pieces', 'icon_old_letter'); },
+  ian_pieces:  { get name() { return L(`이안의 수첩 조각 (${pieceList().length}/5)`, `Ian's Notebook Pages (${pieceList().length}/5)`); }, get icon() { return iconOf('icon_ian_pieces', 'icon_old_letter'); },
     desc: '지난 회차의 이안이 남긴 한 장. 글씨는 전부 같고, 뒤로 갈수록 흔들린다.', doc: () => piecesDoc() },
   ian_notebook: { name: '이안의 수첩', get icon() { return iconOf('icon_ian_notebook', 'icon_doctrine'); }, desc: 'DAY 7 빈 교실에 남겨져 있던 수첩. 마지막 장에 내 이름이 있다.', doc: () => fmtDoc(IAN_NOTEBOOK_DOC) },
   zero_report: { name: '최초의 의식', icon: 'icon_zero_report', desc: '일체회의 최초 의식 기록. 원래의 두 사람은 처음부터 여기 없었다.', doc: () => ZERO_DOC },
@@ -158,7 +158,7 @@ const MAPS = {
       N: () => G.vars.cult_truth >= 50 && count('winLook') % 2 === 1
         ? ['창밖으로…… 지하실이 보인다.', '여기는 2층인데.']
         : ['창밖으로 산이 보인다.', '나무들이 그림처럼 움직이지 않는다.'],
-      B: () => ['칠판 — 『' + BOARD_WORDS[Math.min(6, G.day)] + '』', '구석의 날짜는 오늘도 3월 13일이다.'],
+      B: () => [L('칠판 — 『' + BOARD_WORDS[Math.min(6, G.day)] + '』', 'Blackboard — "' + T(BOARD_WORDS[Math.min(6, G.day)]) + '"'), '구석의 날짜는 오늘도 3월 13일이다.'],
       C: () => G.vars.cult_truth >= 80 ? clockText().concat(['……방금, 분침이 한 칸 움직였다가 돌아온 것 같다.']) : clockText(),
       P: ['교탁이다. 출석부는 선생님이 가져갔다.'],
       d: () => G.phase >= 2 ? ['누군가의 책상이다. 의자가 반듯하게 집어넣어져 있다.'] : ['누군가의 책상이다.'],
@@ -1037,7 +1037,7 @@ async function talkRequest(r, e) {
   for (const l of r.intro) await narr(l);
   await say(r.who, r.ask, r.who === 's' ? null : (r.face || 0));
   G.flags.req = r.id;
-  toast('부탁 — ' + r.text);
+  toast(T('부탁 — ') + T(r.text));
 }
 for (const r of REQUESTS) {
   const n = r.npc, M = MAPS[n.map];
@@ -1076,7 +1076,7 @@ function reqCheck() {
   const id = G.flags.req; if (!id) return;
   const r = REQUESTS.find(q => q.id === id);
   if (!r) { delete G.flags.req; return; }
-  if (r.done()) { delete G.flags.req; G.flags['reqDone_' + id] = true; toast('부탁 완료 — ' + r.text); }
+  if (r.done()) { delete G.flags.req; G.flags['reqDone_' + id] = true; toast(T('부탁 완료 — ') + T(r.text)); }
 }
 
 /* 기숙사 침대 — 잠들면 의식의 다음 단계로 재구성된다 */
@@ -1303,7 +1303,7 @@ const CLINIC = { 2: '원인 불명의 기억 상실', 3: '식사 거부', 4: '�
 async function infirmaryRecord() {
   await narr('환자 기록부가 펼쳐져 있다.');
   const rows = [];
-  for (let d = 2; d <= Math.min(5, Math.max(2, G.day)); d++) rows.push(['3월 13일', d === 5 ? `${G.name} (보호자: ${G.name})` : G.name, CLINIC[d], '식사']);
+  for (let d = 2; d <= Math.min(5, Math.max(2, G.day)); d++) rows.push(['3월 13일', d === 5 ? L(`${G.name} (보호자: ${G.name})`, `${G.name} (Guardian: ${G.name})`) : G.name, CLINIC[d], '식사']);
   if (G.day >= 6) rows.push(['3월 13일', '', '', '']);
   await doc({ type: 'ledger', title: '환자 기록부', cols: [['날짜', 100], ['이름', 170], ['증상', 250], ['처치', 70]], rows });
   await narr('날짜 칸이 전부 같다. 처치 칸도 전부 같다.');
@@ -2142,7 +2142,7 @@ async function startDay5() {
 /* D5-04 과거의 교실 / 편지와 동의서 */
 const OLD_LETTER_DOC = { type: 'paper', title: '', lines: [
   '유리에게.', '나는 네가 나를 잊는 게 제일 무서워.', '!네가 나를 잊는 것보다', '!네가 나를 먹는 게 나아.', '적어도 그때는, 내가 네 안에 있을 테니까.', '~— {N}'] };
-function fmtDoc(spec) { return JSON.parse(fmt(JSON.stringify(spec))); }
+function fmtDoc(spec) { return JSON.parse(fmt(JSON.stringify(trDoc(spec)))); }
 async function oldLetter() {
   if (has('old_letter')) { await narr('내 자리다. 아니, 내 자리였다.'); return; }
   await narr('내 자리였던 책상이다. 서랍에 편지가 한 통 들어 있다.');
@@ -2573,13 +2573,13 @@ async function afterEnding() {
   if (br.d7_choice || br.d7_table) {
     const key = br.d7_choice ? 'd7_choice' : 'd7_table', can = reachableAtTable(br[key].s.vars);
     opts.push('마지막 식탁으로 돌아간다'); acts.push(() => startFromBranch(BRANCH_POINTS.find(b => b.id === key)));
-    UI.endHint = '마지막 식탁에서 볼 수 있는 결말: ' + can.map(t => `『${t}』`).join(' · ');
+    UI.endHint = T('마지막 식탁에서 볼 수 있는 결말: ') + can.map(t => L(`『${t}』`, `"${T(t)}"`)).join(' · ');
   }
   if (rec.days[7]) { opts.push('DAY 7 아침으로 돌아간다'); acts.push(() => startFromDay(7, rec.days[7].start, clone(rec.days[7].start.vars))); }
   opts.push('다른 날의 분기점 고르기 (RECORD)'); acts.push(async () => { showTitle(); openRecord(); });
   opts.push('타이틀로'); acts.push(async () => showTitle());
   bgm(null);
-  const lines = [`본 결말 ${seen.length} / ${ENDINGS_INFO.length}`];
+  const lines = [L(`본 결말 ${seen.length} / ${ENDINGS_INFO.length}`, `Endings seen ${seen.length} / ${ENDINGS_INFO.length}`)];
   if (UI.endHint) lines.push(UI.endHint);
   if (rec.days[7] && !seen.includes('secret')) lines.push('DAY 7 아침에는 급식실에 가기 전에 다른 곳에 들를 수 있다.');
   UI.endHint = null;
@@ -2851,8 +2851,8 @@ say = function (who, text, face = 0, opt = {}) {
   if (who === 'hero' && !opt.raw) {
     let t = fmt(text);
     const v = G.vars;
-    if (v.yuri_sync >= 50 && /([^잖]야|었어)\.$/.test(t)) {
-      t = t.replace(/([^잖])야\.$/, '$1잖아.').replace(/었어\.$/, '었잖아.');
+    if (v.yuri_sync >= 50 && /([^잖]야|었어)\.$/.test(LANG === 'en' ? text : t) && !/you know\.$/.test(t)) {
+      t = LANG === 'en' ? t.replace(/\.$/, ', you know.') : t.replace(/([^잖])야\.$/, '$1잖아.').replace(/었어\.$/, '었잖아.');
       if (!dflag('ticNoted')) {
         dflag('ticNoted', true);
         return _say(who, t, face, opt).then(() => think('(……방금 그건, 유리의 말투였다.)'));
@@ -2935,7 +2935,7 @@ async function yuriNote(n) {
   if (list.includes(n)) return;
   list.push(n); list.sort();
   if (!has('yuri_notes')) G.items.push('yuri_notes');
-  sfx('chime'); toast(`유리의 쪽지 ${n}을(를) 얻었다. (${list.length}/6)`);
+  sfx('chime'); toast(L(`유리의 쪽지 ${n}을(를) 얻었다. (${list.length}/6)`, `Got Yuri's Note ${n}. (${list.length}/6)`));
 }
 
 /* DAY 2 점심 */
@@ -3119,7 +3119,7 @@ async function lostFound() {
     await think('(물건은 없는데 분실물로 적혀 있다. 아직 아무도 잃어버리지 않았는데.)');
     return;
   }
-  const owners = ['', G.name, '유리', `${G.name}, 유리`, `유리 (${G.name}에서 고침)`, `${G.name} — 유리 — ${G.name} — 유리`, '우리'];
+  const Y = T('유리'); const owners = ['', G.name, Y, `${G.name}, ${Y}`, L(`유리 (${G.name}에서 고침)`, `Yuri (corrected from ${G.name})`), `${G.name} — ${Y} — ${G.name} — ${Y}`, T('우리')];
   const rows = [];
   for (let d = 1; d <= Math.min(7, G.day); d++) rows.push(['3월 13일', '빨간 리본', owners[d - 1] || '']);
   if (flag('lostFoundSeen')) {
@@ -3179,8 +3179,8 @@ async function momoPlates() {
 
 /* 합일 의식 기록 */
 const RITUAL_DOC = () => ({ type: 'ledger', title: '합일 의식 기록', cols: [['회차', 80], ['참가자', 220], ['결과', 280]],
-  rows: [[1, `유리 / ${G.name}`, '실패 — 한 몸 안에 둘이 남음'], [2, `유리 / ${G.name}`, '실패'], [3, `유리 / ${G.name}`, '실패'],
-    ['…', '…', '…'], ['?', `유리 / ${G.name}`, '진행 중'], ['', '모모', '도주 — 재구성 불완전']],
+  rows: [[1, `${T('유리')} / ${G.name}`, '실패 — 한 몸 안에 둘이 남음'], [2, `${T('유리')} / ${G.name}`, '실패'], [3, `${T('유리')} / ${G.name}`, '실패'],
+    ['…', '…', '…'], ['?', `${T('유리')} / ${G.name}`, '진행 중'], ['', '모모', '도주 — 재구성 불완전']],
   note: '실패는 완성에 가까워지는 과정이다.' });
 
 /* 이안 확인 — 이름표 접시와 의식 기록을 둘 다 봤을 때 (추격 중이 아닐 때) */
@@ -3356,17 +3356,19 @@ async function ianPiece(n) {
   list.push(n); list.sort();
   if (!has('ian_pieces')) G.items.push('ian_pieces');
   gain('cult_truth', 3);
-  sfx('chime'); toast(`이안의 수첩 조각 ${CIRCLED[n]}을(를) 얻었다. (${list.length}/5)`);
+  sfx('chime'); toast(L(`이안의 수첩 조각 ${CIRCLED[n]}을(를) 얻었다. (${list.length}/5)`, `Got Ian's Notebook Page ${CIRCLED[n]}. (${list.length}/5)`));
+}
+/* 조각·쪽지 묶음: 한 쪽에 한 장씩, 펼친 면에 두 장 (많이 모이면 종이 한 장에 다 들어가지 않는다) */
+function spreadDoc(title, entries) {
+  const sides = entries.map((e, i) => i === 0 ? ['~' + T(title), ''].concat(e) : e), pages = [];
+  for (let i = 0; i < sides.length; i += 2) pages.push({ left: sides[i], right: sides[i + 1] || [], lh: 30 });
+  return { type: 'book', pages, title };
 }
 function piecesDoc() {
-  const lines = [];
-  for (const n of pieceList()) { if (lines.length) lines.push(''); lines.push('#' + CIRCLED[n]); lines.push(...IAN_PIECES[n]); }
-  return { type: 'paper', title: '이안의 수첩 조각', lines };
+  return spreadDoc('이안의 수첩 조각', pieceList().map(n => ['#' + CIRCLED[n], ''].concat(IAN_PIECES[n])));
 }
 function notesDoc() {
-  const lines = [];
-  for (const n of (G.flags.notes || [])) { if (lines.length) lines.push(''); lines.push('#쪽지 ' + n); lines.push(...YURI_NOTES[n]); }
-  return { type: 'paper', title: '유리의 쪽지', lines };
+  return spreadDoc('유리의 쪽지', (G.flags.notes || []).map(n => [T('#쪽지 ') + n, ''].concat(YURI_NOTES[n])));
 }
 function iconOf(...names) { for (const n of names) if (IMG[n]) return n; return names[names.length - 1]; }
 
@@ -3415,7 +3417,7 @@ async function ianHall(e) {
     return;
   }
   if (d === 2) {
-    if (n === 1) { await say('ian', '어제 너는 ' + (flag('d1_lunchbox') ? '유리 도시락을' : '급식을') + ' 먹었지. 적어 뒀어.', 0); await say('ian', '나만 그런 게 아니야. 요즘은 다들 하루면 흐려져.', 2); }
+    if (n === 1) { await say('ian', T('어제 너는 ') + T(flag('d1_lunchbox') ? '유리 도시락을' : '급식을') + T(' 먹었지. 적어 뒀어.'), 0); await say('ian', '나만 그런 게 아니야. 요즘은 다들 하루면 흐려져.', 2); }
     else await say('ian', '오늘 일도 적어 둘 거야. 내일의 내가 읽을 수 있게. ……내일의 내가, 나라면.', 2);
     return;
   }
@@ -3449,13 +3451,13 @@ async function deepCandle() {
 }
 
 function applyLocationV2() {
-  const T = (id) => MAPS[id].tileText || (MAPS[id].tileText = {});
+  const TT = (id) => MAPS[id].tileText || (MAPS[id].tileText = {});
   const A = (id) => MAPS[id].tileAction || (MAPS[id].tileAction = {});
   const E = (map, id) => (MAPS[map].events || []).find(e => e.id === id);
   // 2학년 A반
-  T('classroom').B = () => G.day >= 7 ? ['칠판이 깨끗하게 지워져 있다. 지운 자국 아래로 글씨가 비친다. 『잘 먹겠습니다』.']
-    : ['오늘의 말씀이 적혀 있다. 『' + BOARD_WORDS[Math.min(6, G.day)] + '』'].concat(G.day >= 2 ? ['……매일 같은 필체다. 선생님 글씨가 아니다.'] : [], ['구석의 날짜 — ' + boardDate() + '.']);
-  T('classroom').N = () => G.vars.cult_truth >= 50 && count('winLook') % 2 === 1
+  TT('classroom').B = () => G.day >= 7 ? ['칠판이 깨끗하게 지워져 있다. 지운 자국 아래로 글씨가 비친다. 『잘 먹겠습니다』.']
+    : [L('오늘의 말씀이 적혀 있다. 『' + BOARD_WORDS[Math.min(6, G.day)] + '』', 'Today\'s Word is written here: "' + T(BOARD_WORDS[Math.min(6, G.day)]) + '"')].concat(G.day >= 2 ? ['……매일 같은 필체다. 선생님 글씨가 아니다.'] : [], [T('구석의 날짜 — ') + L(boardDate(), 'March 13') + '.']);
+  TT('classroom').N = () => G.vars.cult_truth >= 50 && count('winLook') % 2 === 1
     ? ['창밖으로…… 지하실이 보인다. 여기는 2층인데.'] : ['창밖으로 산이 보인다. 나무들이 그림처럼 꼼짝도 안 한다.'];
   if (MAPS.classroom7) MAPS.classroom7.tileText = Object.assign({}, MAPS.classroom.tileText, MAPS.classroom7.tileText, { B: MAPS.classroom.tileText.B });
   const momo = E('classroom', 'momo');
@@ -3467,18 +3469,18 @@ function applyLocationV2() {
     else await say('momo', '……뭘 봐. 할 말 없으면 가.', 1);
   };
   // 2층 복도
-  T('hall2').N = () => G.phase >= 3 ? ['창밖이 깜깜하다. 유리에 비친 복도가 진짜 복도보다 조금 길다.'] : ['운동장에 아무도 없다.'];
+  TT('hall2').N = () => G.phase >= 3 ? ['창밖이 깜깜하다. 유리에 비친 복도가 진짜 복도보다 조금 길다.'] : ['운동장에 아무도 없다.'];
   // 화장실
-  T('restroom').S = ['칸 문이 전부 잠겨 있다. 안에서는 숨소리도 들리지 않는다.'];
+  TT('restroom').S = ['칸 문이 전부 잠겨 있다. 안에서는 숨소리도 들리지 않는다.'];
   // 도서관
   const album = E('library', 'album'); if (album) album.action = async () => { await gradAlbum(); };
   const cook = E('library', 'cookbook'); if (cook) cook.action = async () => { await cookbook(); };
-  T('library').N = ['창밖으로 산이 보인다. 아까와 달라진 게 하나도 없다.'];
+  TT('library').N = ['창밖으로 산이 보인다. 아까와 달라진 게 하나도 없다.'];
   // 1층 복도
-  T('hall1').E = ['정문이다. 열리지 않는다. 유리문 너머로 산이 보인다. 언제부터 저 색이었는지 기억나지 않는다.'];
-  T('hall1').Y = () => G.phase >= 3 ? ['기숙사로 이어지는 문이다.'] : ['『방과 후 개방』이라고 적혀 있다.'];
-  T('hall1').A = ['운동장으로 나가는 문이다. 잠겨 있다.'];
-  T('hall1').O = () => G.day < 2 ? ['교무실이다. 잠겨 있다.', '안에서 출석 부르는 소리가 들린다.'] : ['교무실이다. 밤에는 잠겨 있다.', '안에서 출석 부르는 소리가 들린다.'];
+  TT('hall1').E = ['정문이다. 열리지 않는다. 유리문 너머로 산이 보인다. 언제부터 저 색이었는지 기억나지 않는다.'];
+  TT('hall1').Y = () => G.phase >= 3 ? ['기숙사로 이어지는 문이다.'] : ['『방과 후 개방』이라고 적혀 있다.'];
+  TT('hall1').A = ['운동장으로 나가는 문이다. 잠겨 있다.'];
+  TT('hall1').O = () => G.day < 2 ? ['교무실이다. 잠겨 있다.', '안에서 출석 부르는 소리가 들린다.'] : ['교무실이다. 밤에는 잠겨 있다.', '안에서 출석 부르는 소리가 들린다.'];
   const m2 = E('hall1', 'momo2');
   if (m2) m2.action = async (e) => {
     if (once('momo2First')) { await think('(모모가 지하실 문 앞에 서 있다.)'); await say('momo', '……', 0); await say('momo', '……뭘 봐.', 1); }
@@ -3487,14 +3489,14 @@ function applyLocationV2() {
   };
   // 양호실
   A('infirmary').H = medCabinet;
-  T('infirmary').N = ['운동장이 보인다.'];
+  TT('infirmary').N = ['운동장이 보인다.'];
   const mi = E('infirmary', 'momoI');
   if (mi) mi.action = async (e) => { await say('momo', '유리한테 가 봐. 그리고 오늘 들은 거, 잊지 마. 적어 두든가.', 0); e.dir = 'left'; };
   // 예배당
   A('chapel').P = chapelPew;
   // 지하 기록실
   A('basement').R = basementShelf;
-  T('basement').I = () => G.day >= 6 ? ['쇠사슬이 풀려 있다. 문 위에 『예배당』.'] : ['쇠사슬로 친친 감긴 철문이다. 문 위에 작은 글씨로 『예배당』.'];
+  TT('basement').I = () => G.day >= 6 ? ['쇠사슬이 풀려 있다. 문 위에 『예배당』.'] : ['쇠사슬로 친친 감긴 철문이다. 문 위에 작은 글씨로 『예배당』.'];
   A('basement').K = async () => { await narr('커다란 솥이다. 비어 있다. 안쪽이 아주 깨끗하게 닦여 있다.'); await think('(복도 지하실 문틈으로 올라오던 냄새는…… 여기서 난 걸까.)'); };
   // 급식실
   const yl = E('cafeteria', 'yuriL');
@@ -3510,7 +3512,7 @@ function applyLocationV2() {
     else await narr('누군가 방금까지 누워 있었던 것 같다.');
   };
   // 과거의 2학년 A반
-  Object.assign(T('pastroom'), {
+  Object.assign(TT('pastroom'), {
     N: ['창밖의 산이 초록색이다. 지금과 계절이 다르다.'],
     B: ['낯선 글씨가 적혀 있다. 『사랑하는 사람을 위한 첫 수업』'],
     C: ['시계가 가고 있다. ……여기서는.'],
