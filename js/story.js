@@ -363,7 +363,13 @@ const MAPS = {
       p: ['조화다.'],
     },
     events: [
-      { id: 'stairs', x: 1, y: 1, touch: () => transfer('hall2', 19, 2, 'down') },
+      { id: 'stairs', x: 1, y: 1, touch: async () => {
+        await transfer('hall2', 19, 2, 'down');
+        if (G.day === 5 && G.phase === 2 && !has('old_letter') && once('d5_up')) {   // 교실로 가는 길에 화장실의 모모 쪽으로 끈다
+          await narr('화장실 쪽에서 물 트는 소리가 난다.');
+          await think('(저 수도꼭지는 물이 안 나올 텐데.)');
+        }
+      } },
       /* 조용한 이상 현상: 다가가면 사라지는 사람 */
       { id: 'ph1', x: 19, y: 3, sprite: 'student_2', dir: 'left', phantom: 3, show: () => G.day === 1 && G.phase >= 3 },
       { id: 'ph7', x: 14, y: 3, sprite: 'student_3', dir: 'up', keep7: true, phantom: 3, show: () => G.day === 7,
@@ -505,8 +511,8 @@ const MAPS = {
       { id: 'momoF3', x: 2, y: 9, sprite: 'momo', dir: 'down', show: () => G.day === 3 && G.phase === 1 && !dflag('lunch'),
         action: async (e) => { await momoField3(e); e.dir = 'down'; } },
       { id: 'tree', x: 18, y: 8, action: async () => { await fieldTree(); } },
-      { id: 'sand', x: 13, y: 8, action: async () => { await fieldSand(); } },
-      { id: 'sand2', x: 14, y: 9, action: async () => { await fieldSand(); } },
+      { id: 'sandPrints', x: 12, y: 8, deco: drawSandPrints },
+      ...[[12, 8], [13, 8], [14, 8], [15, 8], [12, 9], [13, 9], [14, 9], [15, 9]].map(([x, y], i) => ({ id: 'sand' + i, x, y, action: async () => { await fieldSand(); } })),
       /* DAY 5: 체육복 차림의 줄. 다가가면 한꺼번에 사라진다 */
       ...[[6, 5], [8, 5], [10, 5], [6, 7], [8, 7], [10, 7]].map(([x, y], i) => ({ id: 'pe' + i, x, y, sprite: 'student_' + (1 + i % 4), dir: 'up', phantom: 3,
         show: () => G.day === 5 && G.phase === 2, onVanish: fieldDrill })),
@@ -809,16 +815,16 @@ async function homeroom() {
 /* D1-07 교리책 — 도입부는 생활 예절처럼 읽힌다. 식인을 직접 말하지 않는다. */
 const DOCTRINE_DOC = { type: 'book', pages: [
   { left: ['', '', '#사랑하는 사람을 위한', '#식사 예절', '', '', '~일체회(一體會) 엮음'],
-    right: ['#제1장 · 인사', '사랑하는 이의 이름을 부르십시오.', '이름을 부르는 것은 그 사람을', '기억하는 일이며, 사랑의 시작입니다.', '',
-      '#제2장 · 나눔', '사랑하는 이와 한 식탁에 앉으십시오.', '내 몫과 네 몫을 가르지 마십시오.', '사랑하는 사이에 따로 남겨 둘 것은', '없습니다.'],
+    right: ['#제1장 · 부름', '사랑하는 이의 이름을 부르십시오.', '그 이름이 당신의 이름과', '구별되지 않을 때까지.', '',
+      '#제2장 · 나눔', '사랑하는 이와 한 식탁에 앉으십시오.', '내 몫과 네 몫을 가르지 마십시오.', '나눌 것이 없는 사이에는', '경계도 없습니다.'],
     lh: 31 },
-  { left: ['#제3장 · 동침', '사랑하는 이와 같은 꿈을 꾸십시오.', '눈을 감고 잠든 뒤에도', '서로를 잊지 마십시오.', '꿈속에서도 둘은 함께여야 합니다.', '',
-      '#제4장 · 섭취', '사랑하는 이가 남긴 것을', '기꺼이 받아들이십시오.', '좋아하는 것만 골라서는', '온전히 사랑할 수 없습니다.', '남긴 것까지 모두 당신의 몫입니다.'],
+  { left: ['#제3장 · 동침', '사랑하는 이와 같은 꿈을 꾸십시오.', '서로 다른 꿈을 꾸는 것은', '아직 둘이 따로 있다는 증거입니다.', '',
+      '#제4장 · 섭취', '사랑하는 이가 남긴 것을', '기꺼이 받아들이십시오.', '남은 것이 있는 한,', '그는 아직 당신 바깥에 있습니다.', '남긴 것까지 모두 당신의 몫입니다.'],
     right: ['', '', '', '~(여기서부터 종이가', '~손끝에 달라붙는다)'],
     lh: 29, stick: true },
   { hush: true, stick: true,
     left: ['#마지막 장 · 합일', '', '!사랑하는 이를', '!남김없이 받아들이십시오.', '', '!그의 살과 기억과 이름까지.', '',
-      '!마침내 둘을 구별할 수', '!없게 되었을 때,', '!비로소 사랑은 완성됩니다.'],
+      '!마침내 둘을 구별할 수', '!없게 되었을 때,', '!타인은 사라지고', '!비로소 사랑은 완성됩니다.', '', '~모두가 하나가 되면', '~누구도 혼자 남지 않습니다.'],
     right: [] },
 ] };
 async function readDoctrineBook() {
@@ -996,21 +1002,21 @@ const REQUESTS = [
     intro: ['입술이 하얗게 말라 있다.'], ask: '급식실 냉장고에서 우유 좀 꺼내 와 줄래? 나 너무 목말라.',
     done: () => flag('fridgeOpen'),
     react: async () => { await narr('어제 우유를 부탁한 아이의 자리가 비어 있다.'); await think('(……그 아이 이름이 생각나지 않는다.)'); } },
-  { id: 'drawer', target: [{ map: 'dorm', x: 11, y: 3 }], npc: { map: 'hall1', x: 17, y: 2, sprite: 'yuri', dir: 'down' },
-    day: 4, when: 'am', who: 'yuri', text: '기숙사 유리 서랍에서 머리빗 가져오기',
-    intro: [], ask: '{N|아|야}, 내 서랍에서 머리빗 좀 가져다줄래? 오늘은 안 잠갔어.', face: 0,
+  { id: 'drawer', target: [{ map: 'dorm', x: 11, y: 3 }], npc: { map: 'classroom', attach: 'yuri' },
+    day: 4, when: 'pm', who: 'yuri', text: '기숙사 유리 서랍에서 머리빗 가져오기',
+    intro: [], ask: '아, {N|아|야}. 이따 기숙사 가면, 내 서랍에서 머리빗 좀 꺼내 줄래? 오늘은 안 잠갔어.', face: 0,
     done: () => flag('opt_yuri_drawer'),
     react: async () => { await say('yuri', '봤어?', 3); await say('yuri', '……괜찮아. 보라고 열어 둔 거야.', 5); } },
   { id: 'office', target: [{ map: 'office', x: 9, y: 5 }], npc: { map: 'hall1', x: 14, y: 3, sprite: 'student_3', dir: 'down' },
-    day: 4, when: 'pm', who: 's', text: '교무실에 출석부 갖다 놓기',
-    intro: ['반 친구 하나가 출석부를 내민다.'], ask: '이거 교무실에 좀 갖다 놔 줄래? 선생님한테 직접 드려.',
-    done: () => flag('opt_teacher_name'),
-    react: async () => { await say('hero', '출석부, 선생님께 드렸어.', 0); await say('s', '출석부? 그거 원래 교무실에 있잖아.', null); } },
+    day: 4, when: 'pm', who: 's', text: '교무실 선생님께 출석부 가져다 드리기',
+    intro: ['반 친구 하나가 출석부를 내민다.'], ask: '이거 교무실에 계신 선생님께 좀 가져다드릴래?',
+    done: () => flag('attendGiven'),
+    react: async () => { await say('hero', '출석부, 선생님께 드렸어.', 0); await say('s', '출석부? 출석부는 항상 선생님이 가져가시잖아.', null); } },
   { id: 'mirror', target: [{ map: 'restroom', x: 3, y: 1 }], npc: { map: 'hall2', attach: 'ian2' },
     day: 5, when: 'am', who: 'ian', text: '화장실 거울 보기',
     intro: [], ask: '화장실 거울, 오늘 꼭 봐. 네가 봐야 할 게 있어.', face: 2,
     done: () => flag('mirrorSeen5'),
-    react: async () => { await say('ian', '봤구나.', 2); await say('ian', '……나도 봤어.', 3); } },
+    react: async () => { await say('ian', '봤구나.', 0); await say('ian', '……나도 봤어.', 2); } },
   { id: 'cook', target: [{ map: 'library', x: 13, y: 5 }], npc: { map: 'hall2', x: 15, y: 3, sprite: 'student_4', dir: 'down' },
     day: 5, when: 'pm', who: 's', text: '도서관에 요리책 반납하기',
     intro: ['반 친구가 두꺼운 책을 안고 있다.'], ask: '도서관에 요리책 좀 반납해 줘. 뒷부분은…… 원래 그랬어.',
@@ -1029,8 +1035,9 @@ function reqShow(r) { return reqInWindow(r) && (reqGiven(r) || ((!r.pre || r.pre
 async function talkRequest(r, e) {
   if (e) e.dir = { up: 'down', down: 'up', left: 'right', right: 'left' }[player.dir];
   if (reqGiven(r)) {
-    if (G.flags['reqDone_' + r.id] || r.done()) { if (r.who === 's') await say('s', '……고마워.', null); else await say(r.who, '고마워.', 0); }
-    else if (r.who === 's') await say('s', '……부탁해.', null); else await say(r.who, '부탁할게.', 0);
+    const polite = r.who === 'teacher';
+    if (G.flags['reqDone_' + r.id] || r.done()) { if (r.who === 's') await say('s', '……고마워.', null); else await say(r.who, polite ? '고마워요.' : '고마워.', polite ? 1 : 0); }
+    else if (r.who === 's') await say('s', '……부탁해.', null); else await say(r.who, polite ? '부탁할게요.' : '부탁할게.', 0);
     return;
   }
   G.flags['reqGiven_' + r.id] = true;
@@ -1141,8 +1148,8 @@ async function startDay2() {
   await say('yuri', '{N}. 일어났어?', 0);
   await say('hero', '……어? 나 분명 기숙사에서 잤는데.', 1);
   await say('yuri', '응. 가끔 그래.', 0);
-  await say('yuri', '교리 1장. 사랑하는 이의 이름을 부르래. 매일 불러 주면 잊지 않겠지?', 0);
-  await say('yuri', '……내가 아니라, 네가.', 5);
+  await say('yuri', '교리 1장. 사랑하는 이의 이름을 부르래. 내 이름이랑 구별이 안 될 때까지.', 0);
+  await say('yuri', '그러니까 매일 불러 줄게. ……{N}.', 5);
   heroPose(null);
   await move(y, 'Ru'); player.dir = 'up';
   await think('(시계는 오늘도 8시 13분이다. 날짜도 3월 13일로 동일하다.)');
@@ -1582,7 +1589,7 @@ async function attendanceBook() {
     range: 7,
     lines: ['여기 있었잖아.', '아니, 아까는 없었어.', '그랬나?', '그러면 다시 찾자.', '저기.', '아니, 이쪽.', '같이 가.'],
     // 아래쪽(오른편 구석)에서 생겨 뒤에서 쫓아온다 — 아래 칸과 가운데 통로를 돌다가 위로 올라간다
-    mons: [{ id: 'd3', kind: 'shadow', x: 14, y: 13, stun: 1800, speedMul: 1.12, patrol: [[14, 13], [15, 10], [15, 8], [9, 8], [8, 6], [4, 4], [9, 2], [13, 4], [9, 6], [1, 8], [1, 12], [8, 13]] }],
+    mons: [{ id: 'd3', kind: 'shadow', x: 14, y: 13, stun: 1800, speedMul: 1.35, patrol: [[14, 13], [15, 10], [15, 8], [9, 8], [8, 6], [4, 4], [9, 2], [13, 4], [9, 6], [1, 8], [1, 12], [8, 13]] }],
   });
   objective('사다리로 올라가자');
 }
@@ -1647,9 +1654,11 @@ async function fieldSand() {
   if (G.day <= 2) { await narrs(['모래 위에 발자국 두 줄이 나란히 나 있다.', '한 줄은 조금 작다. 둘 다 나무 쪽으로 걸어간다.']); return; }
   if (G.day <= 4) { await narrs(['나란히 가던 발자국 두 줄이 모래밭 한가운데서 한 줄로 합쳐진다.', '합쳐진 뒤의 발자국은 두 배로 깊다.']); return; }
   if (G.day <= 6) {
-    await narr('발자국은 이제 한 줄뿐이다. 끝에 무언가를 묻었다가 다시 덮은 자리가 있다.');
+    if (dflag('sandDug')) { await narr('파헤친 자리다. 숟가락은 도로 묻어 두었다.'); return; }
+    await narrs(['발자국이 전부 지워져 있다.', '대신 모래밭 끝에 작은 모래 더미가 솟아 있다. 무언가를 묻고 덮은 것처럼.']);
     if (await ask(['파 본다', '그만둔다']) === 0) {
       sfx('thud');
+      dflag('sandDug', true);
       await narr('숟가락 두 개가 나온다. 손잡이가 녹아서 하나로 붙어 있다.');
       if (once('sand_spoon')) await think('(누가 이걸 일부러 묻었다. 아무도 못 찾게.)');
       await narr('도로 묻는다.');
@@ -1755,7 +1764,14 @@ Object.assign(MAPS, {
     events: [
       { id: 'exit', x: 6, y: 8, touch: () => transfer('hall1', 15, 2, 'down') },
       { id: 'teacherO', x: 9, y: 5, sprite: 'teacher', dir: 'down', show: () => ((G.day === 5 || G.day === 6) || (G.day === 4 && G.flags.req === 'office')) && G.phase === 2 && !dflag('officeEmpty'),
-        action: async (e) => { await teacherName(); e.dir = 'down'; } },
+        action: async (e) => {
+          if (G.day === 4 && G.flags.req === 'office' && !flag('attendGiven')) {
+            await narr('출석부를 선생님께 건넸다.');
+            await say('teacher', '어머, 고마워요.', 1);
+            flag('attendGiven', true); reqCheck();
+          }
+          await teacherName(); e.dir = 'down';
+        } },
       { id: 'lostBox', x: 11, y: 2, action: async () => { await lostFound(); } },
     ],
   },
@@ -1778,6 +1794,7 @@ Object.assign(MAPS, {
     events: [
       { id: 'door', x: 15, y: 1, touch: async () => { await transfer('hall2', 4, 2, 'down'); } },
       { id: 'envelope', x: 10, y: 9, action: async () => { await oldLetter(); } },   // 내 자리(지금 교실의 빈 책상과 같은 자리)
+      { id: 'vase', x: 8, y: 3, deco: drawDeskVase },   // 교탁 위 꽃병 (지금 교실에는 없다)
     ],
   },
 
@@ -1830,7 +1847,7 @@ Object.assign(MAPS, {
       { id: 'box', x: 16, y: 4, deco: drawRecordBox, action: async () => { if (G.day === 6 && flag('d6_doorD') && !has('ritual_record')) await branch('d6_record', recordBox); else await recordBox(); } },
       { id: 'leverA', x: 2, y: 1, deco: (c, x, y) => drawLever(c, x, y, flag('d6_leverA')), action: async () => { await narr(flag('d6_leverA') ? '모모가 손잡이를 붙잡고 있다.' : '벽에 박힌 손잡이다. 기록함 쪽으로 쇠줄이 이어져 있다.'); } },
       { id: 'leverB', x: 17, y: 7, block: true, deco: (c, x, y) => drawLever(c, x, y + 6, flag('d6_doorD')), action: async () => { await leverB(); } },   // 안쪽(예배당 쪽) 벽 앞에 선 레버
-      { id: 'leverC', x: 6, y: 12, deco: (c, x, y) => drawLever(c, x, y, flag('d6_sideClosed')), action: async () => { await leverC(); } },
+      { id: 'leverC', x: 1, y: 11, block: true, deco: (c, x, y) => drawLever(c, x, y + 6, flag('d6_sideClosed')), action: async () => { await leverC(); } },   // 옆방 밖, 복도 왼쪽 끝
       { id: 'tray', x: 7, y: 11, block: false, deco: drawTray, show: () => G.day === 6 && !!flag('d6_chase'), action: async () => { await throwTray(); } },
       { id: 'boxD', x: 16, y: 14, action: async () => { await emptyLunchbox(); } },
       { id: 'momoD', x: 10, y: 14, sprite: 'momo', dir: 'up', show: () => G.day === 6 && dflag('deepTalk') && !dflag('momoGone') && !dflag('momoAtLever'),
@@ -1859,6 +1876,48 @@ function drawLever(c, sx, sy, down) {
   c.strokeStyle = '#8a8090'; c.lineWidth = 3; c.beginPath(); c.moveTo(sx + 24, sy + 30);
   c.lineTo(sx + 24 + (down ? 9 : -9), sy + (down ? 42 : 14)); c.stroke();
   c.fillStyle = '#b0242e'; c.beginPath(); c.arc(sx + 24 + (down ? 9 : -9), sy + (down ? 42 : 14), 4, 0, 7); c.fill();
+}
+/* 운동장 모래밭 발자국 (모래밭 4×2칸, 왼쪽 위 칸 기준) — DAY 1~2 나란히 두 줄 → DAY 3~4 한 줄로 합쳐짐 → DAY 5~6 지워지고 모래 더미 → DAY 7 고름 */
+function drawSandPrints(c, sx, sy) {
+  const d = G.day, W = TILE * 4;
+  const foot = (x, y, s, side, deep) => {
+    c.save(); c.translate(x, y + side * s * 1.1); c.rotate(0.12 * side);
+    c.fillStyle = deep ? 'rgba(70,48,24,0.55)' : 'rgba(90,66,36,0.38)';
+    c.beginPath(); c.ellipse(0, 0, s * 1.35, s * 0.62, 0, 0, 7); c.fill();
+    c.beginPath(); c.ellipse(s * 1.75, 0, s * 0.55, s * 0.5, 0, 0, 7); c.fill();
+    c.restore();
+  };
+  const track = (pts, s, deep) => { pts.forEach(([x, y], i) => foot(sx + x, sy + y, s, i % 2 ? 1 : -1, deep)); };
+  const line = (x0, y0, x1, y1, n) => Array.from({ length: n }, (_, i) => [x0 + (x1 - x0) * i / (n - 1), y0 + (y1 - y0) * i / (n - 1)]);
+  if (d <= 2) {
+    track(line(8, 28, W - 14, 26, 9), 4.2);
+    track(line(12, 70, W - 10, 66, 10), 3.3);
+  } else if (d <= 4) {
+    track(line(8, 26, 96, 46, 5), 4.2);
+    track(line(12, 72, 96, 50, 5), 3.3);
+    track(line(110, 48, W - 10, 48, 5), 5, true);
+  } else if (d <= 6) {
+    const mx = sx + W - 40, my = sy + 52;
+    if (dflag('sandDug')) {
+      c.fillStyle = 'rgba(60,40,20,0.55)'; c.beginPath(); c.ellipse(mx, my, 16, 9, 0, 0, 7); c.fill();
+      c.fillStyle = 'rgba(200,170,120,0.55)'; c.beginPath(); c.ellipse(mx + 18, my + 6, 10, 5, 0, 0, 7); c.fill();
+    } else {
+      c.fillStyle = 'rgba(70,50,26,0.35)'; c.beginPath(); c.ellipse(mx + 2, my + 6, 20, 8, 0, 0, 7); c.fill();
+      const g = c.createRadialGradient(mx - 5, my - 5, 2, mx, my, 20);
+      g.addColorStop(0, 'rgba(235,210,160,0.9)'); g.addColorStop(1, 'rgba(160,125,80,0.85)');
+      c.fillStyle = g; c.beginPath(); c.ellipse(mx, my, 18, 11, 0, Math.PI, 0); c.lineTo(mx + 18, my + 2); c.ellipse(mx, my + 2, 18, 5, 0, 0, Math.PI); c.fill();
+    }
+  }
+}
+/* 과거의 교실 — 교탁 위 꽃병 (생화) */
+function drawDeskVase(c, sx, sy) {
+  const x = sx + 24, y = sy + 14;
+  c.strokeStyle = '#3f6b33'; c.lineWidth = 2;
+  for (const [dx, h] of [[-6, 17], [0, 21], [6, 16]]) { c.beginPath(); c.moveTo(x, y + 6); c.lineTo(x + dx, y + 6 - h); c.stroke(); }
+  const fl = [[-6, -11, '#f2ece4'], [0, -15, '#c8283a'], [6, -10, '#f2ece4'], [-3, -6, '#c8283a']];
+  for (const [dx, dy, col] of fl) { c.fillStyle = col; for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(x + dx + Math.cos(k * 1.26) * 2.6, y + dy + Math.sin(k * 1.26) * 2.6, 2.2, 0, 7); c.fill(); } c.fillStyle = '#e8c048'; c.beginPath(); c.arc(x + dx, y + dy, 1.3, 0, 7); c.fill(); }
+  c.fillStyle = 'rgba(170,205,220,0.75)'; c.beginPath(); c.moveTo(x - 6, y + 2); c.quadraticCurveTo(x - 9, y + 14, x - 5, y + 18); c.lineTo(x + 5, y + 18); c.quadraticCurveTo(x + 9, y + 14, x + 6, y + 2); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1; c.beginPath(); c.moveTo(x - 3, y + 5); c.lineTo(x - 4, y + 14); c.stroke();
 }
 /* 교실 화분 — 담임이 지나가는 줄이라 벽 쪽으로 반 칸 올려 그린다 (타일에서 바닥을 빼고 화분만 오려 냄) */
 const _plantCut = {};
@@ -2074,7 +2133,7 @@ async function yuriTalk4(e) {
     await say('hero', '네가 깨우니까.', 0);
     await say('yuri', '아, 그래서였구나.', 3);
     await say('yuri', '그럼 내일도 내가 깨워 줄게.', 1);
-    await say('yuri', '이름을 부르는 건 사랑의 시작이잖아. 매일 네 이름을 불러 줄게.', 5);
+    await say('yuri', '교리 1장 있잖아. 네 이름이 내 이름처럼 들릴 때까지 불러 줄게.', 5);
   } else {
     await say('hero', '모르겠어.', 3);
     await say('yuri', '몰라도 괜찮아. 네가 다시 돌아왔잖아.', 0);
@@ -2128,7 +2187,7 @@ async function startDay5() {
   if (c === 0) {
     await say('hero', '이안.', 0);
     await say('ian', '……응. 그거다.', 1);
-    await say('ian', '고마워. 오늘은 네가 내 수첩이네.', 1);
+    await say('ian', '고마워. 네가 있어서 다행이야.', 1);
     if (once('d5_ianName')) gain('memory', 5);
   } else {
     await say('ian', '그래, 괜찮아. 적혀 있으니까.', 0);
@@ -2201,18 +2260,15 @@ async function yuriTalk5(e) {
   await say('hero', '뭐를?', 3);
   await say('yuri', '우리 처음 같이 먹은 날.', 1);
   await memory(cgPick('cg_mem_firstlunch', 'cg_mem_lunchbox'), async () => {
+    await narr('급식이 거의 그대로 남아 있다.');
     await say('yuri', '그거 남길 거야?', 0);
-    await say('hero', '어? 응. 배불러서.', 0);
-    await say('yuri', '그럼 내가 먹어도 돼?', 0);
-    await say('hero', '……어? 그거 내 숟가락인데.', 1);
-    await say('yuri', '응. 그러니까.', 0);
-    await narr('유리는 내 숟가락으로, 내가 남긴 걸 남김없이 먹었다.');
-    await say('yuri', '……이런 기분이구나.', 5);
-    await say('yuri', '……좋네.', 1);
-    await say('hero', '뭐가?', 3);
-    await say('yuri', '그냥. 네가 먹던 거라서.', 1);
-    await say('yuri', '내일부터는 내가 싸 올게. 두 개.', 0);
-    await say('yuri', '앞으로는 남기지 마.', 5);
+    await say('hero', '어? 응. ……좀 입에 안 맞아서.', 0);
+    await say('yuri', '입에 안 맞아?', 3);
+    await say('yuri', '그럼 내가 오늘부터 너를 위해 매일 도시락 싸 줄게.', 1);
+    await say('hero', '매일? 귀찮을 텐데.', 3);
+    await say('yuri', '아니. 내가 만든 걸 네가 먹는 거, 그게 좋아.', 1);
+    await say('yuri', '……조금씩이라도, 매일.', 5);
+    await say('yuri', '그러니까 앞으로는 남기지 마.', 5);
   });
   await think('(그날부터였다. 유리가 도시락을 두 개씩 싸 오기 시작한 건.)');
   if (once('firstLunchMem')) gain('memory', 5);
@@ -2489,10 +2545,11 @@ async function finalTable() {
 }
 /* D7-04 ~ D7-07 질문 네 가지 — 원하는 순서로, 한 번씩. 수치 변화 없음 */
 const FINAL_QA = [
-  ['너는 나를 사랑했어?', [['yuri', '응.', 1], ['yuri', '그래서 남기지 않았어. 한 숟가락도.', 5]]],
+  ['너는 나를 사랑했어?', [['yuri', '응. 그래서 너와 하나가 되려고 했어.', 1]]],
   ['왜 나를 먹었어?', [['yuri', '교리 마지막 장. 사랑하는 이를 남김없이 받아들이십시오.', 0], ['yuri', '난 너를 사랑하니까. 네 살도 기억도, 전부 내 안에 두고 싶었어.', 1],
     ['yuri', '……아, 하나 더 있다. 네가 다른 사람을 보는 게 싫었어.', 3], ['yuri', '그건 교리에 없는 건데. 이상하지.', 5]]],
-  ['나는 네 안에 있었어?', [['yuri', '아침마다 네 이름을 부르면, 안에서 누가 대답했어.', 0], ['yuri', '그게 너였는지, 너인 척하는 나였는지는 몰라. 상관없었어.', 5]]],
+  ['나는 네 안에 있었어?', [['yuri', '아침마다 네 이름을 부르면, 안에서 누가 대답했어.', 0], ['yuri', '그게 너였는지, 너인 척하는 나였는지는 몰라. 상관없었어.', 5],
+    ['yuri', '……그리고 나도 네 안에 있어.', 1], ['yuri', '도시락. 매일 조금씩 넣었거든. 나를.', 5], ['narr', '유리의 손가락마다 반창고가 감겨 있다.']]],
   ['이제 그만하고 싶지 않아?', [['yuri', '그만?', 3], ['yuri', '왜? 거의 다 왔는데.', 0], ['yuri', '실패는 완성에 가까워지는 과정이야. 이번이 제일 가까워.', 5]]],
 ];
 async function finalChoice() {
@@ -2687,7 +2744,8 @@ async function endTrue() {
 /* D7-S01 지하 제단 / 제0차 보고서 → D7-S02 접시 하나 */
 function secretReady() { return G.vars.memory >= 100 && G.vars.cult_truth >= 100; }
 const ZERO_DOC = { type: 'paper', title: '최초의 의식', lines: [
-  '이 의식은 두 사람을 하나로 만드는 기술이 아니다.', '!한 사람의 기억을', '!여러 사람에게 나누어 심는 기술이다.',
+  '이 의식은 나의 개인적인 욕심에서 시작됐다.', '모두와 하나가 되고 싶다는 욕심.', '그 누구도 고독 속에 남기지 않겠다는 욕심.', '',
+  '!그래서 한 사람의 기억을', '!여러 사람에게 나누어 심었다.',
   '학생들은 모두 누군가의 기억에서 만들어진다.', '원래의 두 사람은 처음부터 여기 없었다.'] };
 async function deepAltar() {
   if (G.day < 7) {
@@ -3082,7 +3140,7 @@ async function lunchDay() {
   if (d === 4) { await specialMeal(); return; }
   await say('yuri', '방과 후에 교실에서 기다릴게.', 0);
   if (d === 5) {
-    await afternoon(['오후 수업이 끝났다.', '종례 시간, 선생님은 한 사람의 이름으로 여러 학생을 불렀다.', '부름을 받은 학생들은 모두 대답했다.'], 'hall2', 4, 2);
+    await afternoon(['오후 수업은 예배당에서 했다.', '종례 시간, 선생님은 한 사람의 이름으로 여러 학생을 불렀다.', '부름을 받은 학생들은 모두 대답했다.'], 'hall1', 10, 2);
     objective('교실의 유리에게 가자');
   } else {
     await afternoon(['오후 수업이 끝났다.', '빈자리가 아침보다 하나 더 늘어 있었다.'], 'hall1', 6, 2);
@@ -3299,7 +3357,8 @@ async function endSecret() {
 
 /* ★ 남겨진 수첩 — DAY 7 이안의 책상 */
 const IAN_NOTEBOOK_DOC = { type: 'paper', title: '수첩 — 마지막 장', lines: [
-  '오늘의 나는 여기 없다.', '대신 이걸 두고 간다.', '!{N}, 너를 봤다.', '!내일의 내가 몰라도.', '~— 이안'] };
+  '오늘이면 나도 사라지게 될 것이다.', '대신 내가 존재했다는 기록을', '여기에 두고 간다.', '',
+  '!이 수첩을 보는 너에게', '!모든 것을 맡길게.', '~— 이안'] };
 
 async function ianNotebook7() {
   if (G.day < 7) { await narr('이안의 책상이다. 필기구가 자로 잰 듯 놓여 있다.'); return; }
@@ -3516,7 +3575,7 @@ function applyLocationV2() {
     N: ['창밖의 산이 초록색이다. 지금과 계절이 다르다.'],
     B: ['낯선 글씨가 적혀 있다. 『사랑하는 사람을 위한 첫 수업』'],
     C: ['시계가 가고 있다. ……여기서는.'],
-    P: ['꽃병에 생화가 꽂혀 있다. 조화가 아니다.'],
+    P: ['교탁이다. 꽃병에 생화가 꽂혀 있다. 조화가 아니다.'],
     d: ['누군가의 책상이다. 낙서가 있다. 『유리 + ……』 뒤는 지워져 있다.'],
   });
   // 지하 예배당

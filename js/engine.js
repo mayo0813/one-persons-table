@@ -901,6 +901,9 @@ function interact() {
   if (ta) { run(() => ta(fx, fy)); return true; }
   const tt = MAP.tileText && MAP.tileText[ch];
   if (tt) { run(() => narrs(typeof tt === 'function' ? tt(fx, fy) : tt)); return true; }
+  // 밟고 지나가는 물건(식판 등) 위에 서 있으면 그것을 조사
+  const u = EVENTS.find(v => v.x === player.x && v.y === player.y && v.block === false && v.action && !v.touch && visible(v));
+  if (u) { run(() => u.action(u)); return true; }
   return false;
 }
 function findPath(tx, ty) {
